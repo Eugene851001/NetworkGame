@@ -9,6 +9,7 @@ using System.IO;
 using System.Collections;
 using System.Threading;
 using GameCommon;
+using SerializeHandler;
 
 namespace ServerGame
 {
@@ -23,7 +24,7 @@ namespace ServerGame
         public static Dictionary<int, string> clientNames = new Dictionary<int, string>();
         public static List<string> MessageHistory = new List<string>();
 
-        static Serializer messageSerializer = new Serializer();
+        static ISerialize messageSerializer = new SerializerBinary();
 
         public static void ListenTcp()
         {
@@ -33,10 +34,12 @@ namespace ServerGame
             socketListener.Bind(endPoint);
             socketListener.Listen(MaxUsersAmount);
             Console.WriteLine("The server is avaible (TCP)");
+            int playerCounter = 0;
             while (true)
             {
                 Socket socketClientHandler = socketListener.Accept();
-                ConnectionHandler connection = new ConnectionHandler(socketClientHandler);
+                ConnectionHandler connection = new ConnectionHandler(socketClientHandler, playerCounter);
+                playerCounter++;
             }
         }
 
@@ -46,9 +49,10 @@ namespace ServerGame
             handleTcp.Start();
         }
 
-        public static void SendMessage(PlayerInfo message, Socket socketClient)
+        public static void SendMessage(GameMessage message, Socket socketClient)
         {
-            socketClient.Send(messageSerializer.Serialize(message));
+            socketClient.Send(messageSerializer.Serialize(message, message.GetType(), 
+                new Type[] { typeof(Player)}));
         }
 
         public static void RemoveClient(int key)
@@ -56,7 +60,8 @@ namespace ServerGame
             clientNames.Remove(key);
             clients.Remove(key);
         }
-        public static void SendToAll(PlayerInfo message)
+
+        public static void SendToAll(GameMessage message)
         {
             foreach (Socket socket in clients.Values)
             {

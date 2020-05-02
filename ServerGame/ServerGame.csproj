@@ -56,9 +56,13 @@
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Common\GameCommon\GameCommon.csproj">
-      <Project>{2a10f52e-21ae-4add-90e2-17efb93bd716}</Project>
+    <ProjectReference Include="..\GameCommon\GameCommon.csproj">
+      <Project>{b492ad79-3074-4cb9-af42-3dc47bc716b8}</Project>
       <Name>GameCommon</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Serializer\Serializer.csproj">
+      <Project>{a9558fe0-4856-4c5a-993c-964873f16bb5}</Project>
+      <Name>Serializer</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

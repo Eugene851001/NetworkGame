@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.IO;
 using GameCommon;
 using System.Threading;
+using SerializeHandler;
 
 namespace ServerGame
 {
@@ -15,38 +16,51 @@ namespace ServerGame
     {
         public delegate void DisconnectClient();
         public event DisconnectClient EventDisconnectClient;
+
         public string Name;
-        Serializer messageSerializer;
+        ISerialize messageSerializer;
         Socket socketClientHandler;
         Thread threadHandleClient;
         public bool IsConnected;
         PlayerHandler playerHandler;
-        public ConnectionHandler(Socket socketClientHandler)
+        public ConnectionHandler(Socket socketClientHandler, int playerID)
         {
             Name = "";
-            playerHandler = new PlayerHandler(new Player(new Vector2D(0, 0), 100, 0.001f));
-            playerHandler.PlayerUpdateEvent += OnPlayerUpdate;
-            messageSerializer = new Serializer();
+            messageSerializer = new SerializerBinary();
             IsConnected = true;
             EventDisconnectClient += RemoveClient;
             this.socketClientHandler = socketClientHandler;
             socketClientHandler.ReceiveTimeout = 1000;
             socketClientHandler.SendTimeout = 1000;
             Server.clients.Add(socketClientHandler.RemoteEndPoint.GetHashCode(), socketClientHandler);
+            Player player = new Player(new Vector2D(100, 100), 100, 0.1f);
+
+            playerHandler = new PlayerHandler(player, playerID);
+            playerHandler.PlayerUpdateEvent += OnPlayerUpdate;
+
+            Server.SendToAll(new MessageAddPlayer() { PlayerID = playerID, PlayerInfo = player });
+
             threadHandleClient = new Thread(HandleClient);
+            threadHandleClient.IsBackground = true;
             threadHandleClient.Start();
+
+            playerHandler.StartUpdatePlayer();
         }
 
         public void RemoveClient()
         {
-            Console.WriteLine(Server.clientNames[socketClientHandler.RemoteEndPoint.GetHashCode()] + " has left the game");
-            Server.RemoveClient(socketClientHandler.RemoteEndPoint.GetHashCode());
-            socketClientHandler.Close();
+      //      Console.WriteLine(Server.clientNames[socketClientHandler.RemoteEndPoint.GetHashCode()] + " has left the game");
+        //    Server.RemoveClient(socketClientHandler.RemoteEndPoint.GetHashCode());
+        //    socketClientHandler.Close();
         }
 
-        public void OnPlayerUpdate(IPlayerInfo playerInfo)
+        public void OnPlayerUpdate(PlayerInfo playerInfo)
         {
-            PlayerInfo message = new PlayerInfo(playerInfo.GetPosition(), playerInfo.GetHealth());
+            MessagePlayerInfo message = new MessagePlayerInfo()
+            {
+                PlayerID = playerHandler.PlayerID,
+                PlayerInfo = playerHandler.player
+            };
             Server.SendToAll(message);
         }
         public void OnDisconnectClient()
@@ -59,8 +73,7 @@ namespace ServerGame
             bool IsConnected = true;
             try
             {
-
-                socketClientHandler.Send(messageSerializer.Serialize(new PlayerInfo()));
+                socketClientHandler.Send(messageSerializer.Serialize(new PlayerInfo(), typeof(PlayerInfo)));
                 if (!socketClientHandler.Connected)
                     IsConnected = false;
             }
@@ -72,36 +85,51 @@ namespace ServerGame
         }
 
 
-        void HandleMessage(PlayerInfo message)
+        void HandleMessage(GameMessage message)
         {
-            playerHandler.ChangePlayerDirection(new Vector2D(0, 0));
-            
+            Console.WriteLine("Handle message");
+            switch(message.MessageType)
+            {
+                case MessageType.AddPlayer:
+
+                    break;
+                case MessageType.PlayerAction:
+                    MessagePlayerAction messageAction = message as MessagePlayerAction;
+                    Console.WriteLine("Get action");
+                    playerHandler.ChangePlayerDirection(messageAction.Direction);
+                    break;
+            }
+            //playerHandler.ChangePlayerDirection(message.pos);
         }
 
         public void ReceiveMessages()
         {
             byte[] data = new byte[1024];
+            Console.WriteLine("Receive messages");
+            IsConnected = true;
             int amount;
             do
             {
                 MemoryStream messageContainer = new MemoryStream();
                 try
-                {
+               {
                     do
                     {
                         amount = socketClientHandler.Receive(data);
                         messageContainer.Write(data, 0, amount);
                     } while (socketClientHandler.Available > 0);
-                    PlayerInfo recievedMessage = messageSerializer.Deserialize(messageContainer.GetBuffer(),
-                        messageContainer.GetBuffer().Length);
+                    GameMessage recievedMessage = (GameMessage)messageSerializer.Deserialize(messageContainer, 
+                        typeof(GameMessage), new Type[] { typeof(MessagePlayerInfo), 
+                        typeof(MessagePlayerAction), typeof(MessageAddPlayer)});
+                    Console.WriteLine("Get message");
                     HandleMessage(recievedMessage);
                 }
-                catch
+                catch(SocketException)
                 {
-                    if (!IsClientConnected())
+                   /* if (!IsClientConnected())
                     {
                         IsConnected = false;
-                    }
+                    }*/
                 }
             } while (IsConnected);
         }
@@ -109,7 +137,7 @@ namespace ServerGame
         public void HandleClient()
         {
             ReceiveMessages();
-            OnDisconnectClient();
+        //    OnDisconnectClient();
         }
     }
 }

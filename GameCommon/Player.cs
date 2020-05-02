@@ -4,27 +4,31 @@ using System.Text;
 
 namespace GameCommon
 {
-    public class Player: IPlayerInfo
+
+    [Serializable]
+    public class Player: PlayerInfo
     {
-        Vector2D position;
-        int health;
+       // public PlayerInfo PlayerInfo;
+
         float speed;
         Vector2D moveDirection;
 
-        public Vector2D GetPosition()
-        {
-            return position;
-        }
+        public Vector2D MoveDirection { get { return moveDirection; } }
 
-        public int GetHealth()
-        {
-            return health;
-        }
         public Player(Vector2D position, int health, float speed)
         {
-            this.position = position;
-            this.health = health;
+            //PlayerInfo = new PlayerInfo(position, health);
+            Position = position;
+            Health = health;
             this.speed = speed;
+            moveDirection = new Vector2D(0, 0);
+        }
+
+        public Player()
+        {
+            Position = new Vector2D(0, 0);
+            Health = 100;
+            speed = 0.01f;
             moveDirection = new Vector2D(0, 0);
         }
 
@@ -33,10 +37,13 @@ namespace GameCommon
             moveDirection = direction.Normalize();
         }
 
+
+
         public void Move(float time)
         {
-            position.X = moveDirection.X * time * speed;
-            position.Y = moveDirection.Y * time * speed;
+            Position.X += moveDirection.X * time * speed;
+            Position.Y += moveDirection.Y * time * speed;
+            Console.WriteLine("Positon: (" + Position.X + ": " + Position.Y + ")");
         }
     }
 }

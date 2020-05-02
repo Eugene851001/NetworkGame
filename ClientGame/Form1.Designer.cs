@@ -28,38 +28,31 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.cbIsConnected = new System.Windows.Forms.CheckBox();
+            this.components = new System.ComponentModel.Container();
+            this.tmDraw = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
-            // cbIsConnected
+            // tmDraw
             // 
-            this.cbIsConnected.AutoSize = true;
-            this.cbIsConnected.Location = new System.Drawing.Point(687, 393);
-            this.cbIsConnected.Name = "cbIsConnected";
-            this.cbIsConnected.Size = new System.Drawing.Size(98, 21);
-            this.cbIsConnected.TabIndex = 0;
-            this.cbIsConnected.Text = "checkBox1";
-            this.cbIsConnected.UseVisualStyleBackColor = true;
+            this.tmDraw.Tick += new System.EventHandler(this.tmDraw_Tick);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 473);
-            this.Controls.Add(this.cbIsConnected);
+            this.DoubleBuffered = true;
             this.Name = "Form1";
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.Form1_Paint);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Form1_KeyDown);
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.CheckBox cbIsConnected;
+        private System.Windows.Forms.Timer tmDraw;
     }
 }
 

@@ -4,6 +4,7 @@ using System.Text;
 
 namespace GameCommon
 {
+    [Serializable]
     public class Vector2D
     {
         public double X;
@@ -18,8 +19,11 @@ namespace GameCommon
         public Vector2D Normalize()
         {
             double length = Math.Sqrt(X * X + Y * Y);
-            X = X / length;
-            Y = Y / length;
+            if (length != 0)
+            {
+                X = X / length;
+                Y = Y / length;
+            }
             return this;
         }
 

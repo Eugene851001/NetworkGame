@@ -8,28 +8,30 @@ using System.Threading;
 
 namespace ServerGame
 {
-    class PlayerHandler : IPlayerInfo
+    class PlayerHandler
     {
-        const int timeUpdate = 40;
-        Player player;
-        public delegate void PlayerUpdate(IPlayerInfo playerInfo);
+        const int timeStep = 100;
+        public Player player;
+        public delegate void PlayerUpdate(PlayerInfo playerInfo);
         public event PlayerUpdate PlayerUpdateEvent;
 
-        public PlayerHandler(Player player)
+        public int PlayerID;
+
+        public PlayerHandler(Player player, int playerID)
         {
+            PlayerID = playerID;
             this.player = player;
+        }
+
+        public void StartUpdatePlayer()
+        {
             Thread threadUpdate = new Thread(UpdatePlayer);
             threadUpdate.Start();
         }
 
-        public Vector2D GetPosition()
+        public Vector2D GetDirection()
         {
-            return player.GetPosition();
-        }
-
-        public int GetHealth()
-        {
-            return player.GetHealth();
+            return player.MoveDirection;
         }
 
         public void ChangePlayerDirection(Vector2D newDirection)
@@ -46,10 +48,12 @@ namespace ServerGame
         {
             while (true)
             {
-                player.Move(40);
+                player.Move(timeStep);
                 Console.WriteLine("Move");
+                Console.WriteLine("(" + player.MoveDirection.X +":" + player.MoveDirection.Y + ")");
                 OnPlayerUpdate();
-                Thread.Sleep(timeUpdate);
+                player.ChangeDirection(new Vector2D(0, 0));
+                Thread.Sleep(timeStep);
             }
         }
 

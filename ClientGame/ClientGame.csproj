@@ -81,9 +81,13 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Common\GameCommon\GameCommon.csproj">
-      <Project>{ea551444-868e-4d28-9ee9-6a228d4b826a}</Project>
+    <ProjectReference Include="..\GameCommon\GameCommon.csproj">
+      <Project>{215c7437-a6f1-4b0a-babc-bc90ddbebe3e}</Project>
       <Name>GameCommon</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Serializer\Serializer.csproj">
+      <Project>{a6e011ea-fc2c-49fe-be3b-a2139fba3aab}</Project>
+      <Name>Serializer</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

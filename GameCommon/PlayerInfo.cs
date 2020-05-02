@@ -6,31 +6,22 @@ using System.Threading.Tasks;
 
 namespace GameCommon
 {
-    public class PlayerInfo : IPlayerInfo
+    [Serializable]
+    public class PlayerInfo
     {
-        public Vector2D pos;
-        public int health;
+        public Vector2D Position;
+        public int Health;
 
-        public PlayerInfo(Vector2D pos, int health)
+        public PlayerInfo(Vector2D position, int health)
         {
-            this.pos = pos;
-            this.health = health;
+            Position = position;
+            Health = health;
         }
 
         public PlayerInfo()
         {
-            pos = new Vector2D(0, 0);
-            health = 100;
-        }
-
-        public Vector2D GetPosition()
-        {
-            return pos;
-        }
-
-        public int GetHealth()
-        {
-            return health;
+            Position = new Vector2D(0, 0);
+            Health = 100;
         }
 
     }

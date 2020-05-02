@@ -9,6 +9,7 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Threading;
 using GameCommon;
+using SerializeHandler;
 
 namespace ClientGame
 {
@@ -17,14 +18,15 @@ namespace ClientGame
         const string BroadcastIP = "192.168.48.255";
         const int ServerPort = 8005;
         Socket socketServerHandler;
-        Serializer messageSerializer;
+        ISerialize messageSerializer;
         public bool IsConnected = false;
 
-        public delegate void MessageHandler(PlayerInfo message);
+        public delegate void MessageHandler(GameMessage message);
         public event MessageHandler ReceiveMessageHandler;
+
         public GameClient()
         {
-            messageSerializer = new Serializer();
+            messageSerializer = new SerializerBinary();
             socketServerHandler = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         }
 
@@ -50,7 +52,7 @@ namespace ClientGame
             IsConnected = false;
         }
 
-        public void OnMessageReceive(PlayerInfo message)
+        public void OnMessageReceive(GameMessage message)
         {
             ReceiveMessageHandler(message);
         }
@@ -59,7 +61,7 @@ namespace ClientGame
         {
             if (Connect(endPoint))
             {
-                SendMessage(new PlayerInfo());
+           //     SendMessage(new MessageAddPlayer());
                 Thread threadServerConnection = new Thread(ReceiveMessages);
                 threadServerConnection.Start();
                 return true;
@@ -72,6 +74,7 @@ namespace ClientGame
             byte[] data = new byte[1024];
             StringBuilder receivedData = new StringBuilder();
             int amount;
+            Console.WriteLine("Start listening player");
             do
             {
                 MemoryStream messageContainer = new MemoryStream();
@@ -82,10 +85,20 @@ namespace ClientGame
                         amount = socketServerHandler.Receive(data);
                         messageContainer.Write(data, 0, amount);
                     } while (socketServerHandler.Available > 0);
-                    PlayerInfo recievedMessage = messageSerializer.Deserialize(messageContainer.GetBuffer(),
-                        messageContainer.GetBuffer().Length);
-                    OnMessageReceive(recievedMessage);
-                }
+                    messageContainer.Position = 0;
+                    try
+                    {
+                        GameMessage recievedMessage = (GameMessage)messageSerializer.Deserialize(messageContainer,
+                        typeof(GameMessage), new Type[] { typeof(MessagePlayerInfo), typeof(MessageAddPlayer),
+                         typeof(MessageDeletePlayer), typeof(MessagePlayerAction), typeof(Player)});
+                        if (recievedMessage != null)
+                            OnMessageReceive(recievedMessage);
+                    }
+                    catch
+                    {
+
+                    }
+                }    
                 catch
                 {
                     Disconnect();
@@ -94,9 +107,9 @@ namespace ClientGame
             } while (IsConnected);
         }
 
-        public bool SendMessage(PlayerInfo message)
+        public bool SendMessage(GameMessage message)
         {
-            byte[] buffer = messageSerializer.Serialize(message);
+            byte[] buffer = messageSerializer.Serialize(message, message.GetType());
             try
             {
                 socketServerHandler.Send(buffer);

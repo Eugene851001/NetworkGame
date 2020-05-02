@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\evgeny\\Desktop\\netGame\\Common\\GameCommon\\GameCommon.csproj": {}
+    "C:\\Users\\evgeny\\Desktop\\netGame\\GIT\\NetworkGame\\GameCommon\\GameCommon.csproj": {}
   },
   "projects": {
-    "C:\\Users\\evgeny\\Desktop\\netGame\\Common\\GameCommon\\GameCommon.csproj": {
+    "C:\\Users\\evgeny\\Desktop\\netGame\\GIT\\NetworkGame\\GameCommon\\GameCommon.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\evgeny\\Desktop\\netGame\\Common\\GameCommon\\GameCommon.csproj",
+        "projectUniqueName": "C:\\Users\\evgeny\\Desktop\\netGame\\GIT\\NetworkGame\\GameCommon\\GameCommon.csproj",
         "projectName": "GameCommon",
-        "projectPath": "C:\\Users\\evgeny\\Desktop\\netGame\\Common\\GameCommon\\GameCommon.csproj",
+        "projectPath": "C:\\Users\\evgeny\\Desktop\\netGame\\GIT\\NetworkGame\\GameCommon\\GameCommon.csproj",
         "packagesPath": "C:\\Users\\evgeny\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\evgeny\\Desktop\\netGame\\Common\\GameCommon\\obj\\",
+        "outputPath": "C:\\Users\\evgeny\\Desktop\\netGame\\GIT\\NetworkGame\\GameCommon\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
