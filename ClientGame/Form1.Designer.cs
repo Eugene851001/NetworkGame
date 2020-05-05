@@ -30,11 +30,18 @@
         {
             this.components = new System.ComponentModel.Container();
             this.tmDraw = new System.Windows.Forms.Timer(this.components);
+            this.tmUpdate = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // tmDraw
             // 
             this.tmDraw.Tick += new System.EventHandler(this.tmDraw_Tick);
+            // 
+            // tmUpdate
+            // 
+            this.tmUpdate.Enabled = true;
+            this.tmUpdate.Interval = 50;
+            this.tmUpdate.Tick += new System.EventHandler(this.tmUpdate_Tick);
             // 
             // Form1
             // 
@@ -53,6 +60,7 @@
 
         #endregion
         private System.Windows.Forms.Timer tmDraw;
+        private System.Windows.Forms.Timer tmUpdate;
     }
 }
 

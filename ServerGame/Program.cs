@@ -13,7 +13,7 @@ namespace ServerGame
       //  static int port = 8005;
         static void Main(string[] args)
         {
-            Server.StartListen();
+            TcpGameServer.StartListen();
         }
     }
 }

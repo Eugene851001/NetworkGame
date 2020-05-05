@@ -17,34 +17,38 @@ namespace ServerGame
         public delegate void DisconnectClient();
         public event DisconnectClient EventDisconnectClient;
 
-        public string Name;
+        public delegate void OnMessageReceive(GameMessage message);
+        public event OnMessageReceive EventOnMessageReceive;
+
         ISerialize messageSerializer;
+
         Socket socketClientHandler;
         Thread threadHandleClient;
         public bool IsConnected;
-        PlayerHandler playerHandler;
+        int playerID;
+     
         public ConnectionHandler(Socket socketClientHandler, int playerID)
         {
-            Name = "";
+
             messageSerializer = new SerializerBinary();
             IsConnected = true;
             EventDisconnectClient += RemoveClient;
             this.socketClientHandler = socketClientHandler;
             socketClientHandler.ReceiveTimeout = 1000;
             socketClientHandler.SendTimeout = 1000;
-            Server.clients.Add(socketClientHandler.RemoteEndPoint.GetHashCode(), socketClientHandler);
-            Player player = new Player(new Vector2D(100, 100), 100, 0.1f);
-
-            playerHandler = new PlayerHandler(player, playerID);
-            playerHandler.PlayerUpdateEvent += OnPlayerUpdate;
-
-            Server.SendToAll(new MessageAddPlayer() { PlayerID = playerID, PlayerInfo = player });
+            this.playerID = playerID;
+            
+           // Player player = new Player(new Vector2D(100, 100), 100, 0.1f);
 
             threadHandleClient = new Thread(HandleClient);
             threadHandleClient.IsBackground = true;
             threadHandleClient.Start();
+        }
 
-            playerHandler.StartUpdatePlayer();
+        public void HandleMessage(GameMessage message)
+        {
+            message.PlayerID = playerID;
+            EventOnMessageReceive(message);
         }
 
         public void RemoveClient()
@@ -54,15 +58,6 @@ namespace ServerGame
         //    socketClientHandler.Close();
         }
 
-        public void OnPlayerUpdate(PlayerInfo playerInfo)
-        {
-            MessagePlayerInfo message = new MessagePlayerInfo()
-            {
-                PlayerID = playerHandler.PlayerID,
-                PlayerInfo = playerHandler.player
-            };
-            Server.SendToAll(message);
-        }
         public void OnDisconnectClient()
         {
             EventDisconnectClient();
@@ -82,24 +77,6 @@ namespace ServerGame
                 IsConnected = false;
             }
             return IsConnected;
-        }
-
-
-        void HandleMessage(GameMessage message)
-        {
-            Console.WriteLine("Handle message");
-            switch(message.MessageType)
-            {
-                case MessageType.AddPlayer:
-
-                    break;
-                case MessageType.PlayerAction:
-                    MessagePlayerAction messageAction = message as MessagePlayerAction;
-                    Console.WriteLine("Get action");
-                    playerHandler.ChangePlayerDirection(messageAction.Direction);
-                    break;
-            }
-            //playerHandler.ChangePlayerDirection(message.pos);
         }
 
         public void ReceiveMessages()
@@ -126,10 +103,10 @@ namespace ServerGame
                 }
                 catch(SocketException)
                 {
-                   /* if (!IsClientConnected())
+                    if (!IsClientConnected())
                     {
                         IsConnected = false;
-                    }*/
+                    }
                 }
             } while (IsConnected);
         }

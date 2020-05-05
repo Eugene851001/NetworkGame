@@ -29,10 +29,6 @@ namespace ServerGame
             threadUpdate.Start();
         }
 
-        public Vector2D GetDirection()
-        {
-            return player.MoveDirection;
-        }
 
         public void ChangePlayerDirection(Vector2D newDirection)
         {
@@ -49,9 +45,6 @@ namespace ServerGame
             while (true)
             {
                 player.Move(timeStep);
-                Console.WriteLine("Move");
-                Console.WriteLine("(" + player.MoveDirection.X +":" + player.MoveDirection.Y + ")");
-                OnPlayerUpdate();
                 player.ChangeDirection(new Vector2D(0, 0));
                 Thread.Sleep(timeStep);
             }
