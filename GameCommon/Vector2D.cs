@@ -27,6 +27,12 @@ namespace GameCommon
             return this;
         }
 
+        public Vector2D(Vector2D vector)
+        {
+            X = vector.X;
+            Y = vector.Y;
+        }
+
         public Vector2D()
         {
             X = Y = 0;

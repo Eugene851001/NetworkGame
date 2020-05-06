@@ -66,6 +66,7 @@ namespace ServerGame
                // playersInfo.Add(playerCounter, connection.PlayerHandler.play);
               //посылаю информацию подключённому игроку о всех игроках
                 SendAddPlayersInfo(socketClientHandler);
+                gameLogic.AddMessage(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
                 SendToAll(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
                 SendPlayersInfo(socketClientHandler);
                 playerCounter++;
@@ -95,6 +96,8 @@ namespace ServerGame
                 {
                     SendPlayersInfo(playersSockets[playerID]);
                 }
+                while (gameLogic.ChatMessages.Count > 0)
+                    SendToAll(gameLogic.ChatMessages.Dequeue());
                 gameLogic.RemoveShootState();
                 Thread.Sleep(timeStep);
             }
@@ -126,7 +129,7 @@ namespace ServerGame
             Thread handleTcp = new Thread(ListenTcp);
             handleTcp.Start();
         }
-
+         
         public static void SendMessage(GameMessage message, Socket socketClient)
         {
              socketClient.Send(messageSerializer.Serialize(message, message.GetType(), 

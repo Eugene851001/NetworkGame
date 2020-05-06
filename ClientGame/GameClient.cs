@@ -89,8 +89,8 @@ namespace ClientGame
                     try
                     {
                         GameMessage recievedMessage = (GameMessage)messageSerializer.Deserialize(messageContainer,
-                        typeof(GameMessage), new Type[] { typeof(MessagePlayerInfo), typeof(MessageAddPlayer),
-                         typeof(MessageDeletePlayer), typeof(MessagePlayerAction), typeof(Player)});
+                            typeof(GameMessage), new Type[] { typeof(MessagePlayerInfo), typeof(MessageAddPlayer),
+                            typeof(MessageDeletePlayer), typeof(MessagePlayerAction), typeof(Player)});
                         if (recievedMessage != null)
                             OnMessageReceive(recievedMessage);
                     }

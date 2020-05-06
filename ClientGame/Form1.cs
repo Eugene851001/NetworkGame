@@ -19,13 +19,15 @@ namespace ClientGame
         PlayerInfo playerInfo;
         GameClient client;
 
+        const int SeverID = -1;
+
         Vector2D camera;
 
         int timeStep = 100;
         int prevTickCount = 0;
         int thisPlayerID = 0;//should receive value from server
         ClientGameLogic gameLogic;
-
+        
         public Form1()
         {
             InitializeComponent();
@@ -50,8 +52,6 @@ namespace ClientGame
         {
             gameLogic.HandleMessage(message);
         }
-            
-
 
         void DrawPlayer(Graphics g, PlayerInfo playerInfo)
         {
@@ -97,6 +97,15 @@ namespace ClientGame
                 }
         }
 
+        void DrawChat(Graphics g)
+        {
+            Font drawFont = new Font("Arial", 16);
+            for (int i = 0; i < gameLogic.chatMessages.Count; i++)
+            {
+                g.DrawString(gameLogic.chatMessages[i].Content, drawFont, new SolidBrush(Color.Green), 0, i * 20);
+            }
+        }
+
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
@@ -109,6 +118,7 @@ namespace ClientGame
                     DrawPlayer(g, playerInfo);
             }
             DrawBullets(g);
+            DrawChat(g);
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -161,6 +171,18 @@ namespace ClientGame
         private void tmUpdate_Tick(object sender, EventArgs e)
         {
             gameLogic.UpdateGame(this.tmUpdate.Interval);
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            MessageDeletePlayer message = new MessageDeletePlayer();
+            client.SendMessage(message);
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+        //    MessageDeletePlayer message = new MessageDeletePlayer();
+          //  client.SendMessage(message);
         }
     }
 }

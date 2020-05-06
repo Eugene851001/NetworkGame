@@ -11,6 +11,9 @@ namespace GameCommon
         public List<Bullet> Bullets = new List<Bullet>();
         public TileMap Map;
 
+        public delegate void OnPlayerShooted(Bullet bullet, int PlayerID);
+        public event OnPlayerShooted EventPlayerShooted; 
+
         public double CountDistance(GameObject firstObject, GameObject secondObject)
         {
             return Math.Sqrt(Math.Pow(firstObject.Position.X - secondObject.Position.X, 2)
@@ -62,8 +65,10 @@ namespace GameCommon
                 foreach (var playerID in playersIDs)
                     if (isCollision(Bullets[i], Players[playerID]))
                     {
-                        Players[playerID].Health -= Bullets[i].Damage;
-                        Bullets[i].IsDestroy = true;
+                        // Players[playerID].Health -= Bullets[i].Damage;
+                        //Bullets[i].IsDestroy = true;
+                        if(EventPlayerShooted.GetInvocationList().Count() > 0)
+                            EventPlayerShooted(Bullets[i], playerID);
                     }
             }
         }

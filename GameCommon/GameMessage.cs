@@ -8,7 +8,7 @@ namespace GameCommon
 {
     public enum MoveRequest { Up, Down, Left, Right};
 
-    public enum MessageType { AddPlayer, DeletePlayer, PlayerInfo, PlayerAction, BulletInfo};
+    public enum MessageType { AddPlayer, DeletePlayer, PlayerInfo, PlayerAction, Chat};
 
     [Serializable]
     abstract public class GameMessage
