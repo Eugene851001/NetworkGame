@@ -9,7 +9,7 @@ namespace GameCommon
     public class Player: PlayerInfo
     {
 
-        public Player(Vector2D position, int health, float speed)
+        public Player(Vector2D position, int health, double speed)
         {
             //PlayerInfo = new PlayerInfo(position, health);
             Position = position;
@@ -17,6 +17,7 @@ namespace GameCommon
             Speed = speed;
             ViewDirection = new Vector2D();
             Direction = new Vector2D(0, 0);
+            Size = 10;
         }
 
         public Player()
@@ -36,15 +37,13 @@ namespace GameCommon
         public void Rotate(float time)
         {
             ViewAngle += RotateDirection * time * RotateSpeed;
-            ViewDirection.X = Math.Cos(ViewAngle);
-            ViewDirection.Y = Math.Sin(ViewAngle);
+            Direction.X = Math.Cos(ViewAngle);
+            Direction.Y = Math.Sin(ViewAngle);
             RotateDirection = 0;
         }
 
         public void Move(float time)
         {
-            Direction.X = ViewDirection.X;
-            Direction.Y = ViewDirection.Y;
             Position.X += Direction.X * time * Speed;
             Position.Y += Direction.Y * time * Speed;
           //  Console.WriteLine("Positon: (" + Position.X + ": " + Position.Y + ")");

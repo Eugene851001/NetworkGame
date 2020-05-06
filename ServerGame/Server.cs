@@ -39,6 +39,13 @@ namespace ServerGame
             Console.WriteLine("The server is avaible (TCP)");
             int playerCounter = 0;
 
+            string map = "";
+            map += "########";
+            map += "........";
+            map += "........";
+            map += "########";
+            gameLogic.Map = new TileMap(8, 4, map);
+
             Thread threadSendUpdatedInfo = new Thread(SendUpdatedPlayersInfo);
             threadSendUpdatedInfo.IsBackground = true;
             threadSendUpdatedInfo.Start();
@@ -52,7 +59,8 @@ namespace ServerGame
                 Socket socketClientHandler = socketListener.Accept();
                 ConnectionHandler connection = new ConnectionHandler(socketClientHandler, playerCounter);
                 connection.EventOnMessageReceive += gameLogic.AddMessage;
-                Player newPlayer = new Player(new Vector2D(100, 100), 100, 0.01f);
+                Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000);
+                newPlayer.Size = 0.5;
                 gameLogic.Players.Add(playerCounter, newPlayer);
                 playersSockets.Add(playerCounter, socketClientHandler);
                // playersInfo.Add(playerCounter, connection.PlayerHandler.play);
@@ -86,7 +94,6 @@ namespace ServerGame
                 foreach (int playerID in playersSockets.Keys)
                 {
                     SendPlayersInfo(playersSockets[playerID]);
-                    SendBulletsInfo(playersSockets[playerID]);
                 }
                 gameLogic.RemoveShootState();
                 Thread.Sleep(timeStep);
@@ -102,15 +109,6 @@ namespace ServerGame
                     PlayerID = playerID,
                     PlayerInfo = gameLogic.Players[playerID]
                 }, socketClient) ;
-            }
-        }
-
-        public static void SendBulletsInfo(Socket socketClient)
-        {
-            foreach(var bullet in gameLogic.Bullets)
-            {
-                SendMessage(new MessageBulletInfo() { Bullet = bullet }, 
-                    socketClient);
             }
         }
 

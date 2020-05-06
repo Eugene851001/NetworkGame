@@ -7,12 +7,9 @@ using GameCommon;
 
 namespace ServerGame
 {
-    class ServerGameLogic
+    class ServerGameLogic: GameLogic
     {
         const int MaxQueueSize = 64;
-
-        public Dictionary<int, Player> Players = new Dictionary<int, Player>();
-        public List<Bullet> Bullets = new List<Bullet>();
 
         Queue<GameMessage> messages = new Queue<GameMessage>();
 
@@ -24,76 +21,12 @@ namespace ServerGame
             }
         }
 
-        public double CountDistance(GameObject firstObject, GameObject secondObject)
-        {
-            return Math.Sqrt(Math.Pow(firstObject.Position.X - secondObject.Position.X, 2)
-                + Math.Pow(secondObject.Position.Y - secondObject.Position.Y, 2));
-        }
-
-        bool isCollision(GameObject firstObject, GameObject secondObject)
-        {
-            return CountDistance(firstObject, secondObject) < (firstObject.Size + secondObject.Size);
-        }
-
-        void updatePlayers(int time)
-        {
-            foreach(var player in Players.Values)
-            {
-                player.Move(time);
-                player.Rotate(time);
-            }
-        }
-
-        void updateBullets(int time)
-        {
-            for (int i = 0; i < Bullets.Count; i++)
-            {
-                Bullets[i].Position.X += Bullets[i].Direction.X * Bullets[i].Speed * time;
-                Bullets[i].Position.Y += Bullets[i].Direction.Y * Bullets[i].Speed * time;
-                foreach (var playerID in Players.Keys)
-                    if (isCollision(Bullets[i], Players[playerID]))
-                    {
-                        Players[playerID].Health -= Bullets[i].Damage;//
-                        Bullets[i].IsDestroy = true;
-                    }
-            }
-        }
-
-        public void UpdateGame(int time)
-        {
-
-            updateBullets(time);
-            updatePlayers(time);            
-
-            foreach(var playerID in Players.Keys)
-            {
-                if (Players[playerID].Health <= 0)
-                    Players[playerID].IsDestroy = true;
-            }
-
-            for(int i = 0; i < Bullets.Count; i++)
-            {
-                if (Bullets[i].IsDestroy)
-                    Bullets.RemoveAt(i);
-            }
-
-            List<int> idArray = new List<int>(Players.Keys.AsEnumerable());
-            for(int i = 0; i < idArray.Count; i++)
-            {
-                int playerID = idArray[i];
-                if (Players[playerID].IsDestroy)
-                {
-                    idArray.RemoveAt(i);
-                    Players.Remove(playerID);
-                }
-            }
-        }
-
         void handleMove(MessagePlayerAction message)
         {
             if(Players.ContainsKey(message.PlayerID))
             {
-                Players[message.PlayerID].ChangeDirection(message.Direction);
+                Players[message.PlayerID].PlayerState = (message.Action == 
+                    PlayerActionType.MoveFront) ? PlayerState.MoveFront : PlayerState.MoveBack;
             }
         }
 
@@ -101,15 +34,16 @@ namespace ServerGame
         {
             if (!Players.ContainsKey(message.PlayerID))
                 return;
-            message.Direction.Normalize();
-            Players[message.PlayerID].RotateDirection = (int)message.Direction.X;
+            int RotateDirection = (message.Action == PlayerActionType.RotateLeft) ? -1 : 1;
+            Players[message.PlayerID].RotateDirection = RotateDirection;
         }
 
         public void RemoveShootState()
         {
             foreach(int playerID in Players.Keys)
             {
-                Players[playerID].PlayerState = PlayerState.None;
+                if(Players[playerID].PlayerState == PlayerState.Shoot)
+                    Players[playerID].PlayerState = PlayerState.None;
             }
         }
 
@@ -119,11 +53,12 @@ namespace ServerGame
                 return;
             Players[message.PlayerID].PlayerState = PlayerState.Shoot;
             Bullet bullet = new Bullet(message.PlayerID);
-            bullet.Direction = Players[message.PlayerID].ViewDirection;
+            bullet.Direction = Players[message.PlayerID].Direction;
             bullet.Speed = Players[message.PlayerID].Speed * 2;
             bullet.Size = Players[message.PlayerID].Size / 4;
             Vector2D position = Players[message.PlayerID].Position;
-            bullet.Position = new Vector2D(position.X + bullet.Size * 5, position.Y + bullet.Size * 5);
+            bullet.Position = new Vector2D(position.X + bullet.Direction.X * bullet.Size * 6, 
+                position.Y + bullet.Direction.Y * bullet.Size * 6);
             Bullets.Add(bullet); 
         }
 
@@ -137,10 +72,12 @@ namespace ServerGame
                     var messageAction = (MessagePlayerAction)message;
                     switch(messageAction.Action)
                     {
-                        case PlayerActionType.Move:
+                        case PlayerActionType.MoveBack:
+                        case PlayerActionType.MoveFront:
                             handleMove(messageAction);
                             break;
-                        case PlayerActionType.Rotate:
+                        case PlayerActionType.RotateLeft:
+                        case PlayerActionType.RotateRight:
                             handleRotate(messageAction);
                             break;
                         case PlayerActionType.Shoot:

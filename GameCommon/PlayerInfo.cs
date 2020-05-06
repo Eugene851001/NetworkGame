@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GameCommon
 {
-    public enum PlayerState {None, Shoot };
+    public enum PlayerState {None, Shoot, Killed, MoveFront, MoveBack};
     [Serializable]
     public class PlayerInfo: MovableGameObject  
     {
