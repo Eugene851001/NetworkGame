@@ -8,6 +8,6 @@ namespace GameCommon
     public class Tile
     {
         public bool IsSolid;
-        public int ID;
+        public int TextureID;
     }
 }

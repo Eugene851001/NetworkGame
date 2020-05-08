@@ -34,9 +34,9 @@ namespace GameCommon
             for(int i = 0; i < map.Length; i++)
             {
                 if (map[i] == '#')
-                    Tiles[i / width, i % width] = new Tile() { IsSolid = true };
+                    Tiles[i / width, i % width] = new Tile() { IsSolid = true, TextureID = 1};
                 else
-                    Tiles[i / width, i % width] = new Tile() { IsSolid = false };
+                    Tiles[i / width, i % width] = new Tile() { IsSolid = false};
             }
         }
 

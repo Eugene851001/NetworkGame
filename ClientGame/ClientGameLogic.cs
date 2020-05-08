@@ -11,6 +11,9 @@ namespace ClientGame
     {
         const int ServerID = -1;
 
+        //public int MyID;
+        public int ThisPlayerID;
+
         delegate void MessageHandler(GameMessage message);
         Dictionary<MessageType, MessageHandler> messageHandlers;
         public List<MessageChat> chatMessages;
@@ -21,11 +24,22 @@ namespace ClientGame
             messageHandlers.Add(MessageType.AddPlayer, handleMessageAdd);
             messageHandlers.Add(MessageType.PlayerInfo, handleMessagePlayerInfo);
             messageHandlers.Add(MessageType.Chat, handleMessageChat);
+            messageHandlers.Add(MessageType.DeletePlayer, handleMessageDelete);
+            messageHandlers.Add(MessageType.PersonalAddPlayer, handleMessagePersonalAdd);
+            ThisPlayerID = 0;
         //    messageHandlers.Add()
 
             chatMessages = new List<MessageChat>();
 
             EventPlayerShooted += proceedPlayerShooted;
+        }
+
+        public Player GetThisPlayer()
+        {
+            if (Players.ContainsKey(ThisPlayerID))
+                return Players[ThisPlayerID];
+            else
+                return null;
         }
 
         void proceedPlayerShooted(Bullet bullet, int playerID)
@@ -36,17 +50,17 @@ namespace ClientGame
 
         protected override void updatePlayers(int time)
         {
-            for (int i = 0; i < Bullets.Count; i++)
+            var player = GetThisPlayer();
+            if (player == null)
+                return;
+            if (player.PlayerState == PlayerState.MoveFront ||
+                    player.PlayerState == PlayerState.MoveBack)
             {
-                Bullets[i].Position.X += Bullets[i].Direction.X * Bullets[i].Speed * time;
-                 Bullets[i].Position.Y += Bullets[i].Direction.Y * Bullets[i].Speed * time;
-                Dictionary<int, Player> savePlayers = new Dictionary<int, Player>(Players);
-                foreach (var playerID in savePlayers.Keys)
-                    if (isCollision(Bullets[i], Players[playerID]))
-                    {
-                        Bullets[i].IsDestroy = true;
-                    }
+                if (!isWallCollision(player, time))
+                    player.Move(time);
+                player.PlayerState = PlayerState.None;
             }
+            player.Rotate(time);
         }
 
         protected override void updateBullets(int time)
@@ -77,6 +91,15 @@ namespace ClientGame
             if (!(message is MessageChat))
                 return;
             chatMessages.Add((MessageChat)message);
+        }
+
+        void handleMessagePersonalAdd(GameMessage message)
+        {
+            if (!(message is MessagePersonalAddPlayer))
+                return;
+            MessagePersonalAddPlayer messageAdd = message as MessagePersonalAddPlayer;
+            ThisPlayerID = messageAdd.PlayerID;
+            Map = messageAdd.Map;
         }
 
         void handleMessagePlayerInfo(GameMessage message)

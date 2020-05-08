@@ -27,19 +27,34 @@ namespace ClientGame
         int prevTickCount = 0;
         int thisPlayerID = 0;//should receive value from server
         ClientGameLogic gameLogic;
-        
+        Render3D render3D;
+
+        Bitmap textureWall;
+        Bitmap textureBullet;
+        Bitmap texturePlayer;
+
+        Dictionary<int, Bitmap> wallTextures;
+
         public Form1()
         {
             InitializeComponent();
 
+            wallTextures = new Dictionary<int, Bitmap>();
+            wallTextures.Add(1, new Bitmap("textures/BrickWall.jpg"));
+
+            textureWall = new Bitmap("textures/BrickWall.jpg");
+            textureBullet = new Bitmap("textures/Bullet.jpg");
+            texturePlayer = new Bitmap("textures/Player.jpg");
+
             client = new GameClient();
             string map = "";
             map += "########";
-            map += "........";
-            map += "........";
+            map += "#......#";
+            map += "#....#.#";
             map += "########";
             gameLogic = new ClientGameLogic();
             gameLogic.Map = new TileMap(8, 4, map);
+            render3D = new Render3D(gameLogic.Map, wallTextures);
             client.ReceiveMessageHandler += HandleMessage;
             playerInfo = null;
             client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
@@ -94,6 +109,7 @@ namespace ClientGame
                     else
                         brush = new SolidBrush(Color.White);
                     g.FillRectangle(brush, j * TileSize, i * TileSize, TileSize, TileSize);
+                    g.DrawRectangle(new Pen(Color.Red), j * TileSize, i * TileSize, TileSize, TileSize);
                 }
         }
 
@@ -103,6 +119,45 @@ namespace ClientGame
             for (int i = 0; i < gameLogic.chatMessages.Count; i++)
             {
                 g.DrawString(gameLogic.chatMessages[i].Content, drawFont, new SolidBrush(Color.Green), 0, i * 20);
+            }
+        }
+
+        void drawRays(PlayerInfo player, Graphics g)
+        {
+            TileMap map = gameLogic.Map;
+            double ViewAngle = Math.PI / 2;
+            int VerticalSegmentsAmount = 50;
+            double checkStep = 0.1;
+            for (int x = 0; x < VerticalSegmentsAmount; x++)
+            {
+                //float fRayAngle = (player.fAngle - fViewAngle / 2.0f) + ((float)x / ScreenWidth) * fViewAngle;
+                double rayAngle = player.ViewAngle - ViewAngle / 2 + ((double)x / VerticalSegmentsAmount) * ViewAngle;
+
+                double wallDistance = 0;
+                bool isWall = false;
+                int testX, testY;
+                while (!isWall)
+                {
+                    wallDistance += checkStep;
+                    testX = (int)(player.Position.X + Math.Cos(rayAngle) * wallDistance);
+                    testY = (int)(player.Position.Y + Math.Sin(rayAngle) * wallDistance);
+                    if (testX >= map.Width || testX < 0 || testY >= map.Height || testY < 0)
+                    {
+                        isWall = true;
+                    }
+                    else
+                    {
+                        isWall = map.IsSolid(testX, testY);
+                    }
+                }
+                Vector2D drawPosition = new Vector2D();
+                drawPosition.X = player.Position.X * TileSize;
+                drawPosition.Y = player.Position.Y * TileSize;
+                Vector2D drawEndPosition = new Vector2D(drawPosition);
+                drawEndPosition.X += wallDistance * Math.Cos(rayAngle) * TileSize;
+                drawEndPosition.Y += wallDistance * Math.Sin(rayAngle) * TileSize;
+                g.DrawLine(new Pen(Color.Red), (int)drawPosition.X, (int)drawPosition.Y, 
+                    (int)drawEndPosition.X, (int)drawEndPosition.Y);
             }
         }
 
@@ -119,6 +174,17 @@ namespace ClientGame
             }
             DrawBullets(g);
             DrawChat(g);
+            if (gameLogic.GetThisPlayer() == null)
+                return;
+            drawRays(gameLogic.GetThisPlayer(), g);
+            Bitmap frame = new Bitmap(300, 300);
+            frame = render3D.DrawWalls(gameLogic.GetThisPlayer(), frame);
+            List<GameObject> gameObjects = new List<GameObject>(gameLogic.Players.Values);
+            gameObjects.Remove(gameLogic.GetThisPlayer());
+            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer);
+            gameObjects = new List<GameObject>(gameLogic.Bullets);
+            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, textureBullet);
+            pbScreen.Image = frame;
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -183,6 +249,11 @@ namespace ClientGame
         {
         //    MessageDeletePlayer message = new MessageDeletePlayer();
           //  client.SendMessage(message);
+        }
+
+        private void pbScreen_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

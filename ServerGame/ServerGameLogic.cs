@@ -130,6 +130,7 @@ namespace ServerGame
                 PlayerID = ServerID,
                 Content = message.PlayerID.ToString() + " покинул игру"
             }); ;
+            Players.Remove(message.PlayerID);
         }
 
 

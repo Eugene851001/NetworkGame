@@ -41,8 +41,8 @@ namespace ServerGame
 
             string map = "";
             map += "########";
-            map += "........";
-            map += "........";
+            map += "#......#";
+            map += "#....#.#";
             map += "########";
             gameLogic.Map = new TileMap(8, 4, map);
 
@@ -63,12 +63,14 @@ namespace ServerGame
                 newPlayer.Size = 0.5;
                 gameLogic.Players.Add(playerCounter, newPlayer);
                 playersSockets.Add(playerCounter, socketClientHandler);
-               // playersInfo.Add(playerCounter, connection.PlayerHandler.play);
-              //посылаю информацию подключённому игроку о всех игроках
+
+                SendMessage(new MessagePersonalAddPlayer() 
+                    { PlayerID = playerCounter, Map = gameLogic.Map }, socketClientHandler);
                 SendAddPlayersInfo(socketClientHandler);
                 gameLogic.AddMessage(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
                 SendToAll(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
-                SendPlayersInfo(socketClientHandler);
+          //      SendPlayersInfo(socketClientHandler);
+
                 playerCounter++;
             }
         }
@@ -132,8 +134,21 @@ namespace ServerGame
          
         public static void SendMessage(GameMessage message, Socket socketClient)
         {
-             socketClient.Send(messageSerializer.Serialize(message, message.GetType(), 
-                new Type[] { typeof(Player)}));
+            try
+            {
+                socketClient.Send(messageSerializer.Serialize(message, message.GetType(),
+               new Type[] { typeof(Player) }));
+            }
+            catch
+            {
+                gameLogic.AddMessage(new MessageChat()
+                {
+                    PlayerID = -1,
+                    Content = message.PlayerID.ToString() + " покинул нас"
+                });
+                gameLogic.AddMessage(new MessageDeletePlayer() { PlayerID = message.PlayerID });
+            }
+            
         }
 
         public static void RemoveClient(int key)

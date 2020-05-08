@@ -25,7 +25,7 @@ namespace GameCommon
             return CountDistance(firstObject, secondObject) < (firstObject.Size + secondObject.Size);
         }
 
-        bool isWallCollision(MovableGameObject gameObject, int time)
+        protected bool isWallCollision(MovableGameObject gameObject, int time)
         {
             Vector2D newPosition = new Vector2D();
             newPosition.X = gameObject.Position.X + gameObject.Direction.X * gameObject.Speed * time;
