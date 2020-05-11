@@ -107,6 +107,11 @@ namespace ClientGame
             } while (IsConnected);
         }
 
+        public async Task<bool> AsyncSendMessage(GameMessage message)
+        {
+            return SendMessage(message);
+        }
+
         public bool SendMessage(GameMessage message)
         {
             byte[] buffer = messageSerializer.Serialize(message, message.GetType());

@@ -9,5 +9,11 @@ namespace GameCommon
     {
         public Vector2D Direction;
         public double Speed;
+        public int LastUpdateTime;
+
+        public MovableGameObject()
+        {
+            LastUpdateTime = Environment.TickCount;
+        }
     }
 }

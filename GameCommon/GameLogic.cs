@@ -33,27 +33,48 @@ namespace GameCommon
             newPosition.X += gameObject.Direction.X * gameObject.Size / 2;
             newPosition.Y += gameObject.Direction.Y * gameObject.Size / 2;
             return Map.IsSolid((int)newPosition.X, (int)newPosition.Y);
+            /*return Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y + gameObject.Size)) 
+                || Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y - gameObject.Size)) 
+                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y + gameObject.Size))
+                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y - gameObject.Size));*/
         }
 
         protected virtual void updatePlayers(int time)
         {
             foreach (var player in Players.Values)
             {
-                if (player.PlayerState == PlayerState.MoveFront || 
-                    player.PlayerState == PlayerState.MoveBack)
-                {
-                    if(!isWallCollision(player, time))
-                        player.Move(time);
-                    player.PlayerState = PlayerState.None;
-                }
-                player.Rotate(time);
+                updatePhysicsPlayer(player, time);
             }
+        }
+
+        protected Player updatePhysicsPlayer(Player player, int time)
+        {
+            if ((player.PlayerState & PlayerState.MoveFront) != 0 && !isWallCollision(player, time))
+            {
+                player.MoveFront(time);
+            }
+            if ((player.PlayerState & PlayerState.MoveBack) != 0 && !isWallCollision(
+                new MovableGameObject()
+                {
+                    Direction = new Vector2D(-player.Direction.X, -player.Direction.Y),
+                    Position = player.Position
+                }, time))
+            {
+                player.MoveBack(time);
+            }
+            if ((player.PlayerState & PlayerState.RotateRight) != 0)
+                player.RotateRight(time);
+            if ((player.PlayerState & PlayerState.RotateLeft) != 0)
+                player.RotateLeft(time);
+            player.PlayerState = player.PlayerState & (PlayerState.Killed | PlayerState.Shoot);
+            return player;
         }
 
         protected virtual void updateBullets(int time)
         {
             for (int i = 0; i < Bullets.Count; i++)
             {
+                time = Environment.TickCount -  Bullets[i].LastUpdateTime;
                 if(isWallCollision(Bullets[i], time))
                 {
                     Bullets[i].IsDestroy = true;

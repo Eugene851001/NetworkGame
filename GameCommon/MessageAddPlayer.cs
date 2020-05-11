@@ -7,7 +7,7 @@ namespace GameCommon
     [Serializable]
     public class MessageAddPlayer: GameMessage
     {
-        public PlayerInfo PlayerInfo;
+        public Player Player;
 
         public MessageAddPlayer()
         {

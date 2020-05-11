@@ -7,7 +7,8 @@ namespace GameCommon
     [Serializable]
     public class MessagePlayerInfo: GameMessage
     {
-        public PlayerInfo PlayerInfo;
+        public Player Player;
+        public int InputNumber;
         public MessagePlayerInfo()
         {
             MessageType = MessageType.PlayerInfo;

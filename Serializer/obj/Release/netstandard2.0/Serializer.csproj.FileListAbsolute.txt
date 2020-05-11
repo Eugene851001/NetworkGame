@@ -1,0 +1,8 @@
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\bin\Release\netstandard2.0\Serializer.deps.json
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\bin\Release\netstandard2.0\Serializer.dll
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\bin\Release\netstandard2.0\Serializer.pdb
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\obj\Release\netstandard2.0\Serializer.csprojAssemblyReference.cache
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\obj\Release\netstandard2.0\Serializer.AssemblyInfoInputs.cache
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\obj\Release\netstandard2.0\Serializer.AssemblyInfo.cs
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\obj\Release\netstandard2.0\Serializer.dll
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\Serializer\obj\Release\netstandard2.0\Serializer.pdb

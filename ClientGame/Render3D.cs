@@ -17,10 +17,12 @@ namespace ClientGame
 
         double[] depthBuffer;
 
+        Color floorColor = Color.RosyBrown;
+
         Dictionary<int, Bitmap> wallTextures;
 
-        public int VerticalSegmentsAmount = 300;
-        public int HorizontalSegmentsAmount = 300;
+        public int VerticalSegmentsAmount = 100;
+        public int HorizontalSegmentsAmount = 100;
 
         public Render3D(TileMap map, Dictionary<int, Bitmap> wallTextures)
         {
@@ -35,8 +37,10 @@ namespace ClientGame
                 + Math.Pow(secondObject.Position.Y - secondObject.Position.Y, 2));
         }
 
-        public Bitmap DrawGameObjects(List<GameObject> gameObjects, PlayerInfo player, Bitmap canvas, Bitmap texture)
+        public Bitmap DrawGameObjects(List<GameObject> gameObjects, Player player, 
+            Bitmap canvas, Bitmap texture, bool isLanded)
         {
+            Bitmap bufferCanvas = new Bitmap(canvas, VerticalSegmentsAmount, HorizontalSegmentsAmount);
             while (player.ViewAngle < 0)
                 player.ViewAngle += Math.PI * 2;
             while (player.ViewAngle > Math.PI * 2)
@@ -61,12 +65,19 @@ namespace ClientGame
                         int ceiling = (int)(HorizontalSegmentsAmount / 2 - HorizontalSegmentsAmount * obj.Size / distance);
                         int floor = HorizontalSegmentsAmount - ceiling;
                         int height = floor - ceiling;
+                        if (height > HorizontalSegmentsAmount)
+                            continue;
+                        int correctLanded = 0;
+                        if (isLanded)
+                            correctLanded = (int)(HorizontalSegmentsAmount * obj.Size / (distance * 2));
                         int x = (int)((alpha - angleLowBorder) * VerticalSegmentsAmount
                             / (angleHighBorder - angleLowBorder));
                         int textureX = (int)((j + obj.Size) * texture.Width / (obj.Size * 2));
-                       
+                        ceiling += correctLanded;
+                        floor += correctLanded;
                         if (distance > depthBuffer[x])
                             continue;
+                        depthBuffer[x] = distance;
                         for (int y = 0; y < VerticalSegmentsAmount; y++)
                         {
                             if (y > ceiling && y < floor)
@@ -74,17 +85,19 @@ namespace ClientGame
                                 int textureY = (y - ceiling) * texture.Height / height;
                                 Color shade = texture.GetPixel(textureX, textureY);
                                 if(shade != Color.FromArgb(255, 255, 255, 255))
-                                    canvas.SetPixel(x, y, shade);
+                                    bufferCanvas.SetPixel(x, y, shade);
                             }
                         }
                     }
                 }
             }
+            canvas = new Bitmap(bufferCanvas, canvas.Width, canvas.Height);
             return canvas;
         }
 
-        public Bitmap DrawWalls(PlayerInfo player, Bitmap canvas)
+        public Bitmap DrawWalls(Player player, Bitmap canvas)
         {
+            Bitmap bufferCanvas = new Bitmap(VerticalSegmentsAmount, HorizontalSegmentsAmount);
             for(int x = 0; x < VerticalSegmentsAmount; x++)
             {
                 //float fRayAngle = (player.fAngle - fViewAngle / 2.0f) + ((float)x / ScreenWidth) * fViewAngle;
@@ -117,19 +130,25 @@ namespace ClientGame
                 double fractX = player.Position.X + Math.Cos(rayAngle) * wallDistance - testX;
                 double fractY = player.Position.Y + Math.Sin(rayAngle) * wallDistance - testY;
                 int textureX =(int)(fractX > fractY ? fractX * wallTexture.Width : fractY * wallTexture.Width);
+                int textureY;
                 for(int y = 0; y < HorizontalSegmentsAmount; y++)
                 {
-                    if(y > ceiling && y < floor)
+                    if (y > ceiling && y < floor)
                     {
-                        int textureY = (y - ceiling) * wallTexture.Height / height;
-                        canvas.SetPixel(x, y, wallTexture.GetPixel(textureX, textureY));
+                        textureY = (y - ceiling) * wallTexture.Height / height;
+                        bufferCanvas.SetPixel(x, y, wallTexture.GetPixel(textureX, textureY));
+                    }
+                    else if (y > floor)
+                    {
+                        bufferCanvas.SetPixel(x, y, floorColor);
                     }
                     else
                     {
-                        canvas.SetPixel(x, y, Color.White);
+                        bufferCanvas.SetPixel(x, y, Color.White);
                     }
                 }
             }
+            canvas = new Bitmap(bufferCanvas, canvas.Width, canvas.Height);
             return canvas;
         }
     }

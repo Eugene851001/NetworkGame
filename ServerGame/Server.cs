@@ -58,7 +58,7 @@ namespace ServerGame
             {
                 Socket socketClientHandler = socketListener.Accept();
                 ConnectionHandler connection = new ConnectionHandler(socketClientHandler, playerCounter);
-                connection.EventOnMessageReceive += gameLogic.AddMessage;
+                connection.EventOnMessageReceive += AddCheckedMessage;// gameLogic.AddMessage;
                 Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000);
                 newPlayer.Size = 0.5;
                 gameLogic.Players.Add(playerCounter, newPlayer);
@@ -67,9 +67,8 @@ namespace ServerGame
                 SendMessage(new MessagePersonalAddPlayer() 
                     { PlayerID = playerCounter, Map = gameLogic.Map }, socketClientHandler);
                 SendAddPlayersInfo(socketClientHandler);
-                gameLogic.AddMessage(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
-                SendToAll(new MessageAddPlayer() { PlayerID = playerCounter, PlayerInfo = newPlayer });
-          //      SendPlayersInfo(socketClientHandler);
+                gameLogic.AddMessage(new MessageAddPlayer() { PlayerID = playerCounter, Player = newPlayer });
+                SendToAll(new MessageAddPlayer() { PlayerID = playerCounter, Player = newPlayer });
 
                 playerCounter++;
             }
@@ -77,7 +76,15 @@ namespace ServerGame
 
         public static void AddCheckedMessage(GameMessage message)
         {
-
+            if (message.MessageType == MessageType.AddPlayer)
+                SendAddPlayersInfo(playersSockets[message.PlayerID]);
+            else
+                gameLogic.AddMessage(message);
+            if (message.MessageType == MessageType.DeletePlayer)
+            {
+                SendToAll(new MessageDeletePlayer() { PlayerID = message.PlayerID });
+                playersSockets.Remove(message.PlayerID);
+            }
         }
 
         public static void UpdateGame()
@@ -107,12 +114,15 @@ namespace ServerGame
 
         public static void SendPlayersInfo(Socket socketClient)
         {
-            foreach (int playerID in gameLogic.Players.Keys)
+            foreach (int playerID in gameLogic.Players.Keys.ToArray())
             {
+                int inputNumber = gameLogic.PlayersInputNumbers.ContainsKey(playerID) ?
+                    gameLogic.PlayersInputNumbers[playerID] : 0;
                 SendMessage(new MessagePlayerInfo()
                 {
                     PlayerID = playerID,
-                    PlayerInfo = gameLogic.Players[playerID]
+                    Player = gameLogic.Players[playerID],
+                    InputNumber = inputNumber
                 }, socketClient) ;
             }
         }
@@ -122,7 +132,7 @@ namespace ServerGame
             foreach(int playerID in gameLogic.Players.Keys)
             {
                 SendMessage(new MessageAddPlayer() {PlayerID = playerID, 
-                    PlayerInfo = gameLogic.Players[playerID]}, socketClient);
+                    Player = gameLogic.Players[playerID]}, socketClient);
             }
         }
 
@@ -159,7 +169,7 @@ namespace ServerGame
 
         public static void SendToAll(GameMessage message)
         {
-            foreach (Socket socket in playersSockets.Values)
+            foreach (Socket socket in playersSockets.Values.ToArray())
             {
                 SendMessage(message, socket);
             }

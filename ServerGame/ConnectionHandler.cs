@@ -68,7 +68,7 @@ namespace ServerGame
             bool IsConnected = true;
             try
             {
-                socketClientHandler.Send(messageSerializer.Serialize(new PlayerInfo(), typeof(PlayerInfo)));
+                socketClientHandler.Send(messageSerializer.Serialize(new Player(), typeof(Player)));
                 if (!socketClientHandler.Connected)
                     IsConnected = false;
             }

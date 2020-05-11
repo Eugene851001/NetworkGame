@@ -4,20 +4,42 @@ using System.Text;
 
 namespace GameCommon
 {
+    public enum PlayerState { 
+        None = 0, 
+        Shoot = 1, 
+        Killed = 2,
+        MoveFront = 4,
+        MoveBack = 8,
+        RotateLeft = 16,
+        RotateRight = 32,
+        MoveFrontShoot = Shoot | MoveFront,
+        MoveBackShoot = Shoot | MoveBack,
+        MoveFrontRotateRight = MoveFront | RotateRight,
+        MoveBackRotateRight = MoveBack | RotateRight,
+        MoveFrontRotateLeft = MoveFront | RotateLeft,
+        MoveBackRotateLeft = MoveBack | RotateLeft
+    };
 
     [Serializable]
-    public class Player: PlayerInfo
+    public class Player: MovableGameObject
     {
+        Weapon weapon;
+        int playerID;
+        public int Health;
+        public double ViewAngle;
+        public double RotateSpeed = Math.PI / 1000;
+        public PlayerState PlayerState = PlayerState.None;
 
         public Player(Vector2D position, int health, double speed)
         {
-            //PlayerInfo = new PlayerInfo(position, health);
+            
             Position = position;
             Health = health;
             Speed = speed;
-            ViewDirection = new Vector2D();
             Direction = new Vector2D(0, 0);
             Size = 10;
+            weapon = new Weapon();
+            playerID = 0;
         }
 
         public Player()
@@ -25,8 +47,14 @@ namespace GameCommon
             Position = new Vector2D(0, 0);
             Health = 100;
             Speed = 0.01f;
-            ViewDirection = new Vector2D();
             Direction = new Vector2D(0, 0);
+            weapon = new Weapon();
+            playerID = 0;
+        }
+
+        public Bullet Shoot(int time)
+        {
+            return weapon.Shoot(this.Direction, this.Position, this.playerID, time);
         }
 
         public void ChangeDirection(Vector2D direction)
@@ -34,19 +62,34 @@ namespace GameCommon
             Direction = direction.Normalize();
         }
 
-        public void Rotate(float time)
+        public void RotateRight(float time)
         {
-            ViewAngle += RotateDirection * time * RotateSpeed;
+            ViewAngle += time * RotateSpeed;
             Direction.X = Math.Cos(ViewAngle);
             Direction.Y = Math.Sin(ViewAngle);
-            RotateDirection = 0;
         }
 
-        public void Move(float time)
+        public void RotateLeft(float time)
         {
+            ViewAngle -= time * RotateSpeed;
+            Direction.X = Math.Cos(ViewAngle);
+            Direction.Y = Math.Sin(ViewAngle);
+        }
+
+        public void MoveFront(float time)
+        {
+            Direction.X = Math.Cos(ViewAngle);
+            Direction.Y = Math.Sin(ViewAngle);
             Position.X += Direction.X * time * Speed;
             Position.Y += Direction.Y * time * Speed;
-          //  Console.WriteLine("Positon: (" + Position.X + ": " + Position.Y + ")");
+        }
+
+        public void MoveBack(float time)
+        {
+            Direction.X = Math.Cos(ViewAngle);
+            Direction.Y = Math.Sin(ViewAngle);
+            Position.X -= Direction.X * time * Speed;
+            Position.Y -= Direction.Y * time * Speed;
         }
     }
 }

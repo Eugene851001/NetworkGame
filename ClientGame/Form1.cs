@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Net;
 using GameCommon;
+using System.Diagnostics;
 using System.Threading;
 
 namespace ClientGame
@@ -16,35 +17,33 @@ namespace ClientGame
     public partial class Form1 : Form
     {
         const int TileSize = 60;
-        PlayerInfo playerInfo;
         GameClient client;
 
         const int SeverID = -1;
 
-        Vector2D camera;
-
-        int timeStep = 100;
-        int prevTickCount = 0;
-        int thisPlayerID = 0;//should receive value from server
         ClientGameLogic gameLogic;
         Render3D render3D;
 
-        Bitmap textureWall;
+       // const int RenderInterval = 40;
+        const int PhysicsUpdateInterval = 100;
+
         Bitmap textureBullet;
         Bitmap texturePlayer;
 
         Dictionary<int, Bitmap> wallTextures;
+
+        MessagePlayerAction messageToSend;
+        int fps = 0;
 
         public Form1()
         {
             InitializeComponent();
 
             wallTextures = new Dictionary<int, Bitmap>();
-            wallTextures.Add(1, new Bitmap("textures/BrickWall.jpg"));
+            wallTextures.Add(1, new Bitmap("textures/BrickWall.bmp"));
 
-            textureWall = new Bitmap("textures/BrickWall.jpg");
             textureBullet = new Bitmap("textures/Bullet.jpg");
-            texturePlayer = new Bitmap("textures/Player.jpg");
+            texturePlayer = new Bitmap("textures/Player.jpg"); 
 
             client = new GameClient();
             string map = "";
@@ -56,19 +55,79 @@ namespace ClientGame
             gameLogic.Map = new TileMap(8, 4, map);
             render3D = new Render3D(gameLogic.Map, wallTextures);
             client.ReceiveMessageHandler += HandleMessage;
-            playerInfo = null;
             client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
+            messageToSend = new MessagePlayerAction();
+            Thread threadGameLoop = new Thread(gameLoop);
+            threadGameLoop.Priority = ThreadPriority.Highest;
+            threadGameLoop.Start();
 
-            tmDraw.Enabled = true;
-            playerInfo = new PlayerInfo(new Vector2D(100, 100), 100);
+        }
+
+
+        PlayerActionType fetchInput()
+        {
+            PlayerActionType result = PlayerActionType.None;
+            if (KeyboardState.IsKeyDown((int)Keys.A))
+                result |= PlayerActionType.RotateLeft;
+            if (KeyboardState.IsKeyDown((int)Keys.D))
+                result |= PlayerActionType.RotateRight;
+            if (KeyboardState.IsKeyDown((int)Keys.W))
+                result |= PlayerActionType.MoveFront;
+            if (KeyboardState.IsKeyDown((int)Keys.S))
+                result |= PlayerActionType.MoveBack;
+            if (KeyboardState.IsKeyDown((int)Keys.Space))
+                result |= PlayerActionType.Shoot;
+            return result;
+        }
+
+        void gameLoop()
+        {
+            Stopwatch watch = Stopwatch.StartNew();
+            int lastTime = 0;
+            int accumulatedTime = 0;
+            int messageCounter = 0;
+            while(true)
+            {
+                int thisTime = (int)watch.ElapsedMilliseconds;
+                int elapsedTime = thisTime - lastTime;
+                lastTime = thisTime;
+                accumulatedTime += elapsedTime;
+
+                if (elapsedTime != 0)
+                {
+                    fps = 1000 / elapsedTime;
+                }
+                while (accumulatedTime > PhysicsUpdateInterval)
+                {
+                    PlayerActionType action = fetchInput();
+                    if (action != PlayerActionType.None)
+                    {
+                        MessagePlayerAction messageAction = new MessagePlayerAction()
+                            { Action = action, InputNumber = messageCounter};
+                        messageCounter++;
+                        client.SendMessage(messageAction);
+                        gameLogic.LastMessage = messageAction;
+                        gameLogic.UnacknowledgedInputs.Enqueue(messageAction);
+                    }
+                    gameLogic.LastMessage = new MessagePlayerAction() { Action = action };
+                    accumulatedTime -= PhysicsUpdateInterval;
+                    gameLogic.UpdateGame(PhysicsUpdateInterval);
+                }
+                updateView();
+               // Invalidate();
+            }
         }
 
         void HandleMessage(GameMessage message)
         {
-            gameLogic.HandleMessage(message);
+            if (message.MessageType == MessageType.PlayerInfo && 
+                !gameLogic.Players.ContainsKey(message.PlayerID))
+                client.SendMessage(new MessageAddPlayer());
+            else
+                gameLogic.HandleMessage(message);
         }
 
-        void DrawPlayer(Graphics g, PlayerInfo playerInfo)
+        void DrawPlayer(Graphics g, Player playerInfo)
         {
             Vector2D drawPosition = new Vector2D();
             drawPosition.X = playerInfo.Position.X * TileSize;
@@ -115,14 +174,15 @@ namespace ClientGame
 
         void DrawChat(Graphics g)
         {
-            Font drawFont = new Font("Arial", 16);
+            Font drawFont = new Font("Arial", 12);
             for (int i = 0; i < gameLogic.chatMessages.Count; i++)
             {
                 g.DrawString(gameLogic.chatMessages[i].Content, drawFont, new SolidBrush(Color.Green), 0, i * 20);
             }
+            g.DrawString(this.fps.ToString(), drawFont, new SolidBrush(Color.Red), 200, 0);
         }
 
-        void drawRays(PlayerInfo player, Graphics g)
+        void drawRays(Player player, Graphics g)
         {
             TileMap map = gameLogic.Map;
             double ViewAngle = Math.PI / 2;
@@ -161,66 +221,101 @@ namespace ClientGame
             }
         }
 
-        private void Form1_Paint(object sender, PaintEventArgs e)
+        void updateView()
         {
-            Graphics g = e.Graphics;
+            Graphics g = this.CreateGraphics();
             g.FillRectangle(new SolidBrush(Color.Blue), 0, 0, 100, 100);
-            DrawMap(g, gameLogic.Map); 
-            List<PlayerInfo> savePlayersInfo = new List<PlayerInfo>(gameLogic.Players.Values.AsEnumerable());
-            foreach (PlayerInfo playerInfo in savePlayersInfo)
+            DrawMap(g, gameLogic.Map);
+            List<Player> savePlayersInfo = new List<Player>(gameLogic.Players.Values.AsEnumerable());
+            foreach (var playerInfo in savePlayersInfo)
             {
-                if(playerInfo.PlayerState != PlayerState.Killed)
+                if (playerInfo.PlayerState != PlayerState.Killed)
                     DrawPlayer(g, playerInfo);
             }
             DrawBullets(g);
             DrawChat(g);
             if (gameLogic.GetThisPlayer() == null)
                 return;
-            drawRays(gameLogic.GetThisPlayer(), g);
+         //   drawRays(gameLogic.GetThisPlayer(), g);
+            Bitmap frame = getFrame();
+            if(frame != null)
+                pbScreen.Image = frame;
+        }
+
+        Bitmap getFrame()
+        {
             Bitmap frame = new Bitmap(300, 300);
             frame = render3D.DrawWalls(gameLogic.GetThisPlayer(), frame);
-            List<GameObject> gameObjects = new List<GameObject>(gameLogic.Players.Values);
+            List<GameObject> gameObjects;
+            try
+            {
+                gameObjects = new List<GameObject>(gameLogic.Players.Values);
+            }
+            catch
+            {
+                return null;
+            }
             gameObjects.Remove(gameLogic.GetThisPlayer());
-            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer);
+            for (int i = 0; i < gameObjects.Count; i++)
+            {
+                if (((Player)gameObjects[i]).PlayerState == PlayerState.Killed)
+                {
+                    gameObjects.RemoveAt(i);
+                    i--;
+                }
+            }
+            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer, true);
             gameObjects = new List<GameObject>(gameLogic.Bullets);
-            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, textureBullet);
-            pbScreen.Image = frame;
+            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, textureBullet, false);
+            return frame;
+        }
+
+
+        private void Form1_Paint(object sender, PaintEventArgs e)
+        {
+            
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {     
-            if (Environment.TickCount - prevTickCount < timeStep)
-                return;
-            prevTickCount = Environment.TickCount;
-            bool isSendMessage = false;
-            MessagePlayerAction message = null;
+          /*  var thisPlayer = gameLogic.GetThisPlayer();
             switch (e.KeyCode)
             {
                 case Keys.Up:
-                    message = new MessagePlayerAction() { Action = PlayerActionType.MoveFront};
+                    messageToSend.Action |= PlayerActionType.MoveFront; ;//= new MessagePlayerAction() { Action = PlayerActionType.MoveFront};
+                 //   thisPlayer.PlayerState = PlayerState.MoveFront;
                     isSendMessage = true;
                     break;
                 case Keys.Down:
-                    message = new MessagePlayerAction() { Action = PlayerActionType.MoveBack};
+                    messageToSend.Action |= PlayerActionType.MoveBack;
+               //     thisPlayer.PlayerState = PlayerState.MoveBack;
                     isSendMessage = true;
                     break;
                 case Keys.Left:
-                    message = new MessagePlayerAction() { Action = PlayerActionType.RotateLeft};
+                    messageToSend.Action |= PlayerActionType.RotateLeft;
+                  //  thisPlayer.
                     isSendMessage = true;
                     break;
                 case Keys.Right:
-                    message = new MessagePlayerAction() { Action = PlayerActionType.RotateRight};
+                    messageToSend.Action |= PlayerActionType.RotateRight;
+                 //   thisPlayer.RotateDirection = 1;
                     isSendMessage = true;
                     break;
                 case Keys.Space:
-                    message = new MessagePlayerAction() { Action = PlayerActionType.Shoot };
+                    messageToSend.Action |= PlayerActionType.Shoot;
+                   // thisPlayer.PlayerState = PlayerState.Shoot;
                     isSendMessage = true;
                     break;
             }
-            if(isSendMessage)
+            if (Environment.TickCount - prevTickCount < timeStep)
+                return;
+            prevTickCount = Environment.TickCount;
+            if (isSendMessage)
             {
-                client.SendMessage(message);
-            }
+                client.SendMessage(messageToSend);
+                messageToSend.Action = 0;
+                isSendMessage = false;
+            }*/
         }
 
         private void Form1_Load(object sender, EventArgs e)

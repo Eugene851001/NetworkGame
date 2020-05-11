@@ -18,6 +18,7 @@ namespace ServerGame
 
         delegate void HandleMessage(GameMessage message);
         Dictionary<MessageType, HandleMessage> messageHandlers;
+        public Dictionary<int, int> PlayersInputNumbers = new Dictionary<int, int>();
 
         public ServerGameLogic()
         {
@@ -31,6 +32,10 @@ namespace ServerGame
 
         void proceedPlayerShooted(Bullet bullet, int playerID)
         {
+            //friendly fire: on
+            if (bullet.OwnerID == playerID)
+                return;
+
             Players[playerID].Health -= bullet.Damage;
             bullet.IsDestroy = true;
             string content;
@@ -56,7 +61,7 @@ namespace ServerGame
         {
             if(Players.ContainsKey(message.PlayerID))
             {
-                Players[message.PlayerID].PlayerState = (message.Action == 
+                Players[message.PlayerID].PlayerState |= (message.Action == 
                     PlayerActionType.MoveFront) ? PlayerState.MoveFront : PlayerState.MoveBack;
             }
         }
@@ -65,16 +70,15 @@ namespace ServerGame
         {
             if (!Players.ContainsKey(message.PlayerID))
                 return;
-            int RotateDirection = (message.Action == PlayerActionType.RotateLeft) ? -1 : 1;
-            Players[message.PlayerID].RotateDirection = RotateDirection;
+            Players[message.PlayerID].PlayerState |= ((message.Action &
+                PlayerActionType.RotateLeft) != 0) ? PlayerState.RotateLeft : PlayerState.RotateRight;
         }
 
         public void RemoveShootState()
         {
             foreach(int playerID in Players.Keys)
             {
-                if(Players[playerID].PlayerState == PlayerState.Shoot)
-                    Players[playerID].PlayerState = PlayerState.None;
+                Players[playerID].PlayerState = Players[playerID].PlayerState & (~PlayerState.Shoot);
             }
         }
 
@@ -82,22 +86,39 @@ namespace ServerGame
         {
             if (!Players.ContainsKey(message.PlayerID))
                 return;
-            Players[message.PlayerID].PlayerState = PlayerState.Shoot;
-            Bullet bullet = new Bullet(message.PlayerID);
-            bullet.Direction = new Vector2D(Players[message.PlayerID].Direction);
-            bullet.Speed = Players[message.PlayerID].Speed * 4;
-            bullet.Size = Players[message.PlayerID].Size / 4;
-            Vector2D position = Players[message.PlayerID].Position;
+           /*  Bullet bullet = new Bullet(message.PlayerID);
+             bullet.Direction = new Vector2D(Players[message.PlayerID].Direction);
+             bullet.Speed = Players[message.PlayerID].Speed * 4;
+             bullet.Size = Players[message.PlayerID].Size / 4;
+             Vector2D position = Players[message.PlayerID].Position;
 
-            bullet.Position = new Vector2D(position.X + bullet.Direction.X * bullet.Size * 6,
-                position.Y + bullet.Direction.Y * bullet.Size * 6);
-            Bullets.Add(bullet);
+             bullet.Position = new Vector2D(position.X + bullet.Direction.X * bullet.Size * 6,
+                 position.Y + bullet.Direction.Y * bullet.Size * 6);*/
+            var bullet = Players[message.PlayerID].Shoot(Environment.TickCount);
+            if (bullet != null)
+            {
+                Players[message.PlayerID].PlayerState |= PlayerState.Shoot;
+                Bullets.Add(bullet);
+            }
         }
 
         void handleMessageAction(GameMessage message)
         {
+            
             var messageAction = (MessagePlayerAction)message;
-            switch (messageAction.Action)
+            if (!PlayersInputNumbers.ContainsKey(message.PlayerID))
+                PlayersInputNumbers.Add(message.PlayerID, messageAction.InputNumber);
+            else
+                PlayersInputNumbers[message.PlayerID] = messageAction.InputNumber;
+            if ((messageAction.Action & PlayerActionType.MoveBack) != 0
+                || (messageAction.Action & PlayerActionType.MoveFront) != 0)
+                handleMove(messageAction);
+            if ((messageAction.Action & PlayerActionType.RotateLeft) != 0
+                || (messageAction.Action & PlayerActionType.RotateRight) != 0)
+                handleRotate(messageAction);
+            if ((messageAction.Action & PlayerActionType.Shoot) != 0)
+                handleShoot(messageAction);
+         /*   switch (messageAction.Action)
             {
                 case PlayerActionType.MoveBack:
                 case PlayerActionType.MoveFront:
@@ -110,7 +131,7 @@ namespace ServerGame
                 case PlayerActionType.Shoot:
                     handleShoot(messageAction);
                     break;
-            }
+            }*/
         }
 
         void handleMessageAdd(GameMessage message)
@@ -125,11 +146,13 @@ namespace ServerGame
 
         void handleMessageDelete(GameMessage message)
         {
+            if (ChatMessages.Count > 1200)
+                return;
             ChatMessages.Enqueue(new MessageChat()
             {
                 PlayerID = ServerID,
                 Content = message.PlayerID.ToString() + " покинул игру"
-            }); ;
+            }); 
             Players.Remove(message.PlayerID);
         }
 

@@ -41,7 +41,6 @@
             // 
             // tmUpdate
             // 
-            this.tmUpdate.Enabled = true;
             this.tmUpdate.Interval = 50;
             this.tmUpdate.Tick += new System.EventHandler(this.tmUpdate_Tick);
             // 
@@ -49,7 +48,7 @@
             // 
             this.pbScreen.Location = new System.Drawing.Point(662, 3);
             this.pbScreen.Name = "pbScreen";
-            this.pbScreen.Size = new System.Drawing.Size(536, 403);
+            this.pbScreen.Size = new System.Drawing.Size(668, 601);
             this.pbScreen.TabIndex = 0;
             this.pbScreen.TabStop = false;
             this.pbScreen.Click += new System.EventHandler(this.pbScreen_Click);
@@ -58,7 +57,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1210, 473);
+            this.ClientSize = new System.Drawing.Size(1336, 706);
             this.Controls.Add(this.pbScreen);
             this.DoubleBuffered = true;
             this.Name = "Form1";
