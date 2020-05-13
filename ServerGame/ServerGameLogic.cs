@@ -74,14 +74,6 @@ namespace ServerGame
                 PlayerActionType.RotateLeft) != 0) ? PlayerState.RotateLeft : PlayerState.RotateRight;
         }
 
-        public void RemoveShootState()
-        {
-            foreach(int playerID in Players.Keys)
-            {
-                Players[playerID].PlayerState = Players[playerID].PlayerState & (~PlayerState.Shoot);
-            }
-        }
-
         void handleShoot(MessagePlayerAction message)
         {
             if (!Players.ContainsKey(message.PlayerID))
@@ -118,20 +110,6 @@ namespace ServerGame
                 handleRotate(messageAction);
             if ((messageAction.Action & PlayerActionType.Shoot) != 0)
                 handleShoot(messageAction);
-         /*   switch (messageAction.Action)
-            {
-                case PlayerActionType.MoveBack:
-                case PlayerActionType.MoveFront:
-                    handleMove(messageAction);
-                    break;
-                case PlayerActionType.RotateLeft:
-                case PlayerActionType.RotateRight:
-                    handleRotate(messageAction);
-                    break;
-                case PlayerActionType.Shoot:
-                    handleShoot(messageAction);
-                    break;
-            }*/
         }
 
         void handleMessageAdd(GameMessage message)

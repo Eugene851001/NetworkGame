@@ -10,6 +10,7 @@ using System.Collections;
 using System.Threading;
 using GameCommon;
 using SerializeHandler;
+using System.Diagnostics;
 
 namespace ServerGame
 {
@@ -20,7 +21,7 @@ namespace ServerGame
         const string address = "127.0.0.1";
         const int MaxUsersAmount = 10;
 
-        const int timeStep = 100;
+        const int PhysicsUpdateInterval = 100;
 
         public static Dictionary<int, Socket> playersSockets = new Dictionary<int, Socket>();
       //  public static Dictionary<int, PlayerInfo> playersInfo = new Dictionary<int, PlayerInfo>(); 
@@ -46,12 +47,8 @@ namespace ServerGame
             map += "########";
             gameLogic.Map = new TileMap(8, 4, map);
 
-            Thread threadSendUpdatedInfo = new Thread(SendUpdatedPlayersInfo);
-            threadSendUpdatedInfo.IsBackground = true;
-            threadSendUpdatedInfo.Start();
-
-            Thread threadUpdateGame = new Thread(UpdateGame);
-            threadUpdateGame.IsBackground = true;
+            Thread threadUpdateGame = new Thread(GameLoop);
+        //    threadUpdateGame.IsBackground = true;
             threadUpdateGame.Start();
 
             while (true)
@@ -87,29 +84,37 @@ namespace ServerGame
             }
         }
 
-        public static void UpdateGame()
+        public static void GameLoop()
         {
+            Stopwatch watch = Stopwatch.StartNew();
+            int lastTime = 0;
+            int accumulatedTime = 0;
             while (true)
             {
-                gameLogic.ProceedMessages();
-                gameLogic.UpdateGame(timeStep);
-                Thread.Sleep(timeStep);
+                int thisTime = (int)watch.ElapsedMilliseconds;
+                int elapsedTime = thisTime - lastTime;
+                lastTime = thisTime;
+                accumulatedTime += elapsedTime;
+
+                if (accumulatedTime >= PhysicsUpdateInterval)
+                {
+                    gameLogic.ProceedMessages();
+                    gameLogic.UpdateGame(PhysicsUpdateInterval);
+                    SendUpdatedPlayersInfo();
+                }
             }
         }
 
         public static void SendUpdatedPlayersInfo()
         {
-            while (true)
+            foreach (int playerID in playersSockets.Keys.ToArray())
             {
-                foreach (int playerID in playersSockets.Keys)
-                {
-                    SendPlayersInfo(playersSockets[playerID]);
-                }
-                while (gameLogic.ChatMessages.Count > 0)
-                    SendToAll(gameLogic.ChatMessages.Dequeue());
-                gameLogic.RemoveShootState();
-                Thread.Sleep(timeStep);
+                SendPlayersInfo(playersSockets[playerID]);
             }
+            while (gameLogic.ChatMessages.Count > 0)
+                SendToAll(gameLogic.ChatMessages.Dequeue());
+            gameLogic.RemoveGeneralStates();
+            gameLogic.RemoveShootState();
         }
 
         public static void SendPlayersInfo(Socket socketClient)
@@ -151,12 +156,6 @@ namespace ServerGame
             }
             catch
             {
-                gameLogic.AddMessage(new MessageChat()
-                {
-                    PlayerID = -1,
-                    Content = message.PlayerID.ToString() + " покинул нас"
-                });
-                gameLogic.AddMessage(new MessageDeletePlayer() { PlayerID = message.PlayerID });
             }
             
         }

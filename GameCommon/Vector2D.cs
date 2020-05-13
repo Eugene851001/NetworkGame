@@ -27,10 +27,25 @@ namespace GameCommon
             return this;
         }
 
+        public double GetLength()
+        {
+            return Math.Sqrt(X * X + Y * Y);
+        }
+
         public Vector2D(Vector2D vector)
         {
             X = vector.X;
             Y = vector.Y;
+        }
+
+        public static double GetAngle(Vector2D firstVector, Vector2D secondVector)
+        {
+            double crossProduct = firstVector.X * secondVector.X + secondVector.Y * secondVector.Y;
+            double lengthFirst = firstVector.GetLength();
+            double lengthSecond = secondVector.GetLength();
+            if (lengthFirst == 0 || lengthSecond == 0)
+                return 0;
+            return Math.Acos(crossProduct / (lengthFirst * lengthSecond));
         }
 
         public Vector2D()

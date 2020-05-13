@@ -13,4 +13,3 @@ C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\GameCommon\obj\Debug\netstandard
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\GameCommon\obj\Debug\netstandard2.0\GameCommon.AssemblyInfo.cs
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\GameCommon\obj\Debug\netstandard2.0\GameCommon.dll
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\GameCommon\obj\Debug\netstandard2.0\GameCommon.pdb
-C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\GameCommon\obj\Debug\netstandard2.0\GameCommon.csprojAssemblyReference.cache

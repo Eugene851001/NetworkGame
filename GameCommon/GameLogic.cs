@@ -66,7 +66,6 @@ namespace GameCommon
                 player.RotateRight(time);
             if ((player.PlayerState & PlayerState.RotateLeft) != 0)
                 player.RotateLeft(time);
-            player.PlayerState = player.PlayerState & (PlayerState.Killed | PlayerState.Shoot);
             return player;
         }
 
@@ -121,6 +120,23 @@ namespace GameCommon
                     idArray.RemoveAt(i);
                     Players.Remove(playerID);
                 }
+            }
+        }
+
+        public void RemoveGeneralStates()
+        {
+            foreach (int playerID in Players.Keys.ToArray())
+            {
+                Players[playerID].PlayerState = Players[playerID].PlayerState &
+                    (PlayerState.Killed | PlayerState.Shoot);
+            }
+        }
+
+        public void RemoveShootState()
+        {
+            foreach (int playerID in Players.Keys.ToArray())
+            {
+                Players[playerID].PlayerState = Players[playerID].PlayerState & (~PlayerState.Shoot);
             }
         }
     }

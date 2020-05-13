@@ -18,6 +18,7 @@ namespace ClientGame
         double[] depthBuffer;
 
         Color floorColor = Color.RosyBrown;
+        Color ignoreColor = Color.FromArgb(255, 152, 0, 136);
 
         Dictionary<int, Bitmap> wallTextures;
 
@@ -37,6 +38,64 @@ namespace ClientGame
                 + Math.Pow(secondObject.Position.Y - secondObject.Position.Y, 2));
         }
 
+        public Bitmap DrawGameObject(GameObject obj, Player player, Bitmap 
+            canvas, Bitmap texture, bool isLanded)
+        {
+            Bitmap bufferCanvas = new Bitmap(canvas, VerticalSegmentsAmount, HorizontalSegmentsAmount);
+            while (player.ViewAngle < 0)
+                player.ViewAngle += Math.PI * 2;
+            while (player.ViewAngle > Math.PI * 2)
+                player.ViewAngle -= Math.PI * 2;
+            double angleLowBorder = player.ViewAngle - ViewAngle / 2;
+            double angleHighBorder = player.ViewAngle + ViewAngle / 2;
+            double objectAngle = Math.Atan2(obj.Position.Y - player.Position.Y,
+                    obj.Position.X - player.Position.X);
+            while (objectAngle < 0)
+                objectAngle += Math.PI * 2;
+            while (objectAngle > Math.PI * 2)
+                objectAngle -= Math.PI * 2;
+            double distance = countDistance(obj, player);
+            double step = distance / VerticalSegmentsAmount;
+            if (step == 0)
+                return canvas;
+            for (double j = -obj.Size; j < obj.Size; j += step)
+            {
+                double alpha = Math.Atan2(j, distance) + objectAngle;
+                if (alpha > angleLowBorder && alpha < angleHighBorder)
+                {
+                    int ceiling = (int)(HorizontalSegmentsAmount / 2 - HorizontalSegmentsAmount * obj.Size / distance);
+                    int floor = HorizontalSegmentsAmount - ceiling;
+                    int height = floor - ceiling;
+                    if (height > HorizontalSegmentsAmount)
+                        continue;
+                    int correctLanded = 0;
+                    if (isLanded)
+                        correctLanded = (int)(HorizontalSegmentsAmount * obj.Size / (distance * 2));
+                    int x = (int)((alpha - angleLowBorder) * VerticalSegmentsAmount
+                        / (angleHighBorder - angleLowBorder));
+                    int textureX = (int)((j + obj.Size) * texture.Width / (obj.Size * 2));
+                    ceiling += correctLanded;
+                    floor += correctLanded;
+                    if (distance > depthBuffer[x])
+                        continue;
+                    depthBuffer[x] = distance;
+                    for (int y = 0; y < VerticalSegmentsAmount; y++)
+                    {
+                        if (y > ceiling && y < floor)
+                        {
+                            int textureY = (y - ceiling) * texture.Height / height;
+                            Color shade = texture.GetPixel(textureX, textureY);
+                            if (shade != Color.FromArgb(255, 255, 255, 255) 
+                                && shade != ignoreColor)
+                                bufferCanvas.SetPixel(x, y, shade);
+                        }
+                    }
+                }
+            }
+            canvas = new Bitmap(bufferCanvas, canvas.Width, canvas.Height);
+            return canvas;
+        }
+
         public Bitmap DrawGameObjects(List<GameObject> gameObjects, Player player, 
             Bitmap canvas, Bitmap texture, bool isLanded)
         {
@@ -47,22 +106,23 @@ namespace ClientGame
                 player.ViewAngle -= Math.PI * 2;
             double angleLowBorder = player.ViewAngle - ViewAngle / 2;
             double angleHighBorder = player.ViewAngle + ViewAngle / 2;
-            foreach(var obj in gameObjects)
+            foreach (var obj in gameObjects)
             {
-                double objectAngle = Math.Atan2(obj.Position.Y - player.Position.Y, 
-                    obj.Position.X - player.Position.X);
+                double objectAngle = Math.Atan2(obj.Position.Y - player.Position.Y,
+                   obj.Position.X - player.Position.X);
                 while (objectAngle < 0)
                     objectAngle += Math.PI * 2;
                 while (objectAngle > Math.PI * 2)
                     objectAngle -= Math.PI * 2;
                 double distance = countDistance(obj, player);
                 double step = distance / VerticalSegmentsAmount;
-                for(double j = -obj.Size; j < obj.Size; j+=step)
+                for (double j = -obj.Size; j < obj.Size; j += step)
                 {
                     double alpha = Math.Atan2(j, distance) + objectAngle;
-                    if(alpha > angleLowBorder && alpha < angleHighBorder)
+                    if (alpha > angleLowBorder && alpha < angleHighBorder)
                     {
-                        int ceiling = (int)(HorizontalSegmentsAmount / 2 - HorizontalSegmentsAmount * obj.Size / distance);
+                        int ceiling = (int)(HorizontalSegmentsAmount / 2 -
+                            HorizontalSegmentsAmount * obj.Size / distance);
                         int floor = HorizontalSegmentsAmount - ceiling;
                         int height = floor - ceiling;
                         if (height > HorizontalSegmentsAmount)
@@ -84,7 +144,7 @@ namespace ClientGame
                             {
                                 int textureY = (y - ceiling) * texture.Height / height;
                                 Color shade = texture.GetPixel(textureX, textureY);
-                                if(shade != Color.FromArgb(255, 255, 255, 255))
+                                if (shade != Color.FromArgb(255, 255, 255, 255))
                                     bufferCanvas.SetPixel(x, y, shade);
                             }
                         }

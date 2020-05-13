@@ -35,6 +35,12 @@ namespace ClientGame
         MessagePlayerAction messageToSend;
         int fps = 0;
 
+        Dictionary<int, AnimatedPlayer> animatedPlayers = new Dictionary<int, AnimatedPlayer>();
+        Animation animationPlayerMoveFront;
+        Animation animationPlayerMoveBack;
+        Animation animationPlayerNoneFront;
+        Animation animationPlayerNoneBack;
+
         public Form1()
         {
             InitializeComponent();
@@ -43,7 +49,29 @@ namespace ClientGame
             wallTextures.Add(1, new Bitmap("textures/BrickWall.bmp"));
 
             textureBullet = new Bitmap("textures/Bullet.jpg");
-            texturePlayer = new Bitmap("textures/Player.jpg"); 
+            texturePlayer = new Bitmap("textures/Player.jpg");
+
+            animationPlayerMoveFront = new Animation(500);
+            animationPlayerMoveFront.Frames = new Bitmap[] { new Bitmap("textures/direction_front/SPR_BJ_M1.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_M2.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_M3.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_M4.BMP")};
+
+            animationPlayerNoneFront = new Animation(1000);
+            animationPlayerNoneFront.Frames = new Bitmap[] { 
+                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNREADY.BMP") 
+            };
+
+            animationPlayerNoneBack = new Animation(1000);
+            animationPlayerNoneBack.Frames = new Bitmap[] {
+                new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNREADY.BMP")
+            };
+
+            animationPlayerMoveBack = new Animation(500);
+            animationPlayerMoveBack.Frames = new Bitmap[] {new Bitmap("textures/direction_back/SPR_BJ_M1.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M2.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M3.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M4.BMP")};
 
             client = new GameClient();
             string map = "";
@@ -53,10 +81,19 @@ namespace ClientGame
             map += "########";
             gameLogic = new ClientGameLogic();
             gameLogic.Map = new TileMap(8, 4, map);
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => { if (animatedPlayers.ContainsKey(playerID))
+                        animatedPlayers[playerID].UpdatePlayer(playerToDraw, Environment.TickCount);
+                    };
+            gameLogic.EventDeletePlayer += (int playerID) 
+                => { if (animatedPlayers.ContainsKey(playerID))
+                        animatedPlayers.Remove(playerID);
+                        };
             render3D = new Render3D(gameLogic.Map, wallTextures);
             client.ReceiveMessageHandler += HandleMessage;
             client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
             messageToSend = new MessagePlayerAction();
+
             Thread threadGameLoop = new Thread(gameLoop);
             threadGameLoop.Priority = ThreadPriority.Highest;
             threadGameLoop.Start();
@@ -67,13 +104,13 @@ namespace ClientGame
         PlayerActionType fetchInput()
         {
             PlayerActionType result = PlayerActionType.None;
-            if (KeyboardState.IsKeyDown((int)Keys.A))
+            if (KeyboardState.IsKeyDown((int)Keys.Left))
                 result |= PlayerActionType.RotateLeft;
-            if (KeyboardState.IsKeyDown((int)Keys.D))
+            if (KeyboardState.IsKeyDown((int)Keys.Right))
                 result |= PlayerActionType.RotateRight;
-            if (KeyboardState.IsKeyDown((int)Keys.W))
+            if (KeyboardState.IsKeyDown((int)Keys.Up))
                 result |= PlayerActionType.MoveFront;
-            if (KeyboardState.IsKeyDown((int)Keys.S))
+            if (KeyboardState.IsKeyDown((int)Keys.Down))
                 result |= PlayerActionType.MoveBack;
             if (KeyboardState.IsKeyDown((int)Keys.Space))
                 result |= PlayerActionType.Shoot;
@@ -113,8 +150,41 @@ namespace ClientGame
                     accumulatedTime -= PhysicsUpdateInterval;
                     gameLogic.UpdateGame(PhysicsUpdateInterval);
                 }
+                updateAnimatedPlayers(elapsedTime);
                 updateView();
                // Invalidate();
+            }
+        }
+
+        void updateAnimatedPlayers(int time)
+        {
+            foreach(var playerID in gameLogic.Players.Keys.ToArray())
+            {
+                if(!animatedPlayers.ContainsKey(playerID) && playerID != gameLogic.ThisPlayerID)
+                {
+                    AnimatedPlayer newPlayer = new AnimatedPlayer(PhysicsUpdateInterval);
+
+                    newPlayer.AnimationWalkFront = new Animation(animationPlayerMoveFront.TimeForFrame);
+                    newPlayer.AnimationWalkFront.Frames = animationPlayerMoveFront.Frames;
+
+                    newPlayer.AnimationNoneFront = new Animation(animationPlayerNoneFront.TimeForFrame);
+                    newPlayer.AnimationNoneFront.Frames = animationPlayerNoneFront.Frames;
+
+                    newPlayer.AnimationNoneBack = new Animation(animationPlayerNoneBack.TimeForFrame);
+                    newPlayer.AnimationNoneBack.Frames = animationPlayerNoneBack.Frames;
+
+                    newPlayer.AnimationWalkBack = new Animation(animationPlayerMoveBack.TimeForFrame);
+                    newPlayer.AnimationWalkBack.Frames = animationPlayerMoveBack.Frames;
+                    // newPlayer.AnimationDie = 
+                    var logicPlayer = gameLogic.Players[playerID];
+                    newPlayer.UpdatePlayer(logicPlayer, Environment.TickCount);
+                    newPlayer.PlayerID = playerID;
+                    animatedPlayers.Add(playerID, newPlayer);
+                }
+            }
+            foreach(AnimatedPlayer animatedPlayer in animatedPlayers.Values)
+            {
+                animatedPlayer.UpdateAnimation(gameLogic.GetThisPlayer(), time);
             }
         }
 
@@ -221,6 +291,7 @@ namespace ClientGame
             }
         }
 
+
         void updateView()
         {
             Graphics g = this.CreateGraphics();
@@ -264,7 +335,18 @@ namespace ClientGame
                     i--;
                 }
             }
-            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer, true);
+            Bitmap animationTexture = null;
+            foreach (var animatedPlayer in animatedPlayers.Values.ToArray())
+            {
+                animationTexture = animatedPlayer.GetTexture(gameLogic.GetThisPlayer());
+                if (animatedPlayer.PlayerID != gameLogic.ThisPlayerID)
+                {
+                    frame = render3D.DrawGameObject(gameLogic.Players[animatedPlayer.
+                        PlayerID], gameLogic.GetThisPlayer(), frame, animationTexture, true);
+                }
+            }
+            //Bitmap texture = new Bitmap(0, 0,);
+            //frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer, true);
             gameObjects = new List<GameObject>(gameLogic.Bullets);
             frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, textureBullet, false);
             return frame;
@@ -278,44 +360,6 @@ namespace ClientGame
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {     
-          /*  var thisPlayer = gameLogic.GetThisPlayer();
-            switch (e.KeyCode)
-            {
-                case Keys.Up:
-                    messageToSend.Action |= PlayerActionType.MoveFront; ;//= new MessagePlayerAction() { Action = PlayerActionType.MoveFront};
-                 //   thisPlayer.PlayerState = PlayerState.MoveFront;
-                    isSendMessage = true;
-                    break;
-                case Keys.Down:
-                    messageToSend.Action |= PlayerActionType.MoveBack;
-               //     thisPlayer.PlayerState = PlayerState.MoveBack;
-                    isSendMessage = true;
-                    break;
-                case Keys.Left:
-                    messageToSend.Action |= PlayerActionType.RotateLeft;
-                  //  thisPlayer.
-                    isSendMessage = true;
-                    break;
-                case Keys.Right:
-                    messageToSend.Action |= PlayerActionType.RotateRight;
-                 //   thisPlayer.RotateDirection = 1;
-                    isSendMessage = true;
-                    break;
-                case Keys.Space:
-                    messageToSend.Action |= PlayerActionType.Shoot;
-                   // thisPlayer.PlayerState = PlayerState.Shoot;
-                    isSendMessage = true;
-                    break;
-            }
-            if (Environment.TickCount - prevTickCount < timeStep)
-                return;
-            prevTickCount = Environment.TickCount;
-            if (isSendMessage)
-            {
-                client.SendMessage(messageToSend);
-                messageToSend.Action = 0;
-                isSendMessage = false;
-            }*/
         }
 
         private void Form1_Load(object sender, EventArgs e)

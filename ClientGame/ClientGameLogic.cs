@@ -15,14 +15,18 @@ namespace ClientGame
         public int ThisPlayerID;
 
     //    const int timeStep = 100;
-        public int ElapsedTime;
-        public int StartTime;
         const int PhysicalUpdateInterval = 100;
 
         bool isPrediction = true;
         bool isReconcilation = true;
 
         public MessagePlayerAction LastMessage;
+
+        public delegate void OnChangeState(Player playerToDraw, int playerID);
+        public event OnChangeState EventChangeState;
+
+        public delegate void OnDeletePlayer(int playerID);
+        public event OnDeletePlayer EventDeletePlayer;
 
         delegate void MessageHandler(GameMessage message);
         Dictionary<MessageType, MessageHandler> messageHandlers;
@@ -125,6 +129,7 @@ namespace ClientGame
         {
             if (!(message is MessageDeletePlayer))
                 return;
+            EventDeletePlayer(message.PlayerID);
             Players.Remove(message.PlayerID);
         }
 
@@ -172,6 +177,11 @@ namespace ClientGame
                     var bullet = newPlayer.Shoot(int.MaxValue);
                     Bullets.Add(bullet); 
                 }
+                if(messageInfo.PlayerID != ThisPlayerID && EventChangeState.GetInvocationList().Count() > 0)
+                {
+                    if(newPlayer.PlayerState != PlayerState.None)
+                        EventChangeState(newPlayer, message.PlayerID);
+                }
             }
             else
             {
@@ -184,6 +194,7 @@ namespace ClientGame
                 {
                     applyInput(newPlayer, messageAction.Action);
                     updatePhysicsPlayer(newPlayer, PhysicalUpdateInterval);
+                    newPlayer.PlayerState = newPlayer.PlayerState & (PlayerState.Killed | PlayerState.Shoot);
                 }
             }
 
