@@ -19,6 +19,7 @@ namespace ServerGame
         delegate void HandleMessage(GameMessage message);
         Dictionary<MessageType, HandleMessage> messageHandlers;
         public Dictionary<int, int> PlayersInputNumbers = new Dictionary<int, int>();
+        public Dictionary<int, string> PlayersNames = new Dictionary<int, string>();
 
         public ServerGameLogic()
         {
@@ -32,20 +33,27 @@ namespace ServerGame
 
         void proceedPlayerShooted(Bullet bullet, int playerID)
         {
-            //friendly fire: on
-            if (bullet.OwnerID == playerID)
-                return;
-
             Players[playerID].Health -= bullet.Damage;
             bullet.IsDestroy = true;
             string content;
-            if (Players[playerID].Health <= 0)
-                content = " убил ";
+            if (PlayersNames.ContainsKey(bullet.OwnerID))
+                content = PlayersNames[bullet.OwnerID];
             else
-                content = " подстрелил ";
-            ChatMessages.Enqueue(new MessageChat() { 
-                PlayerID = ServerID, 
-                Content = bullet.OwnerID.ToString() + content + playerID.ToString()
+                content = bullet.OwnerID.ToString();
+
+            if (Players[playerID].Health <= 0)
+                content += " убил ";
+            else
+                content += " подстрелил ";
+
+            if (PlayersNames.ContainsKey(playerID))
+                content += PlayersNames[playerID];
+            else
+                content += playerID.ToString();
+            ChatMessages.Enqueue(new MessageChat()
+            {
+                PlayerID = ServerID,
+                Content = content
             });
         }
 
@@ -76,7 +84,7 @@ namespace ServerGame
 
         void handleShoot(MessagePlayerAction message)
         {
-            if (!Players.ContainsKey(message.PlayerID))
+             if (!Players.ContainsKey(message.PlayerID))
                 return;
            /*  Bullet bullet = new Bullet(message.PlayerID);
              bullet.Direction = new Vector2D(Players[message.PlayerID].Direction);

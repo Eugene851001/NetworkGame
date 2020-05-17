@@ -12,7 +12,7 @@ namespace ClientGame
         const int ServerID = -1;
 
         //public int MyID;
-        public int ThisPlayerID;
+        public int ThisPlayerID  = -1;
 
     //    const int timeStep = 100;
         const int PhysicalUpdateInterval = 100;
@@ -122,7 +122,7 @@ namespace ClientGame
             MessageAddPlayer messageAdd = message as MessageAddPlayer;
             if (Players.ContainsKey(messageAdd.PlayerID))
                 return;
-            Players.Add(messageAdd.PlayerID, (Player)messageAdd.Player);
+            Players.Add(messageAdd.PlayerID, messageAdd.Player);
         }
 
         void handleMessageDelete(GameMessage message)
@@ -166,14 +166,6 @@ namespace ClientGame
                 newPlayer = messageInfo.Player;
                 if (messageInfo.Player.PlayerState == PlayerState.Shoot)
                 {
-                    /*Bullet bullet = new Bullet(message.PlayerID);
-                    bullet.Direction = new Vector2D(Players[message.PlayerID].Direction);
-                    bullet.Speed = Players[message.PlayerID].Speed * 4;
-                    bullet.Size = Players[message.PlayerID].Size / 4;
-                    Vector2D position = Players[message.PlayerID].Position;
-
-                    bullet.Position = new Vector2D(position.X + bullet.Direction.X * bullet.Size * 6,
-                        position.Y + bullet.Direction.Y * bullet.Size * 6);*/
                     var bullet = newPlayer.Shoot(int.MaxValue);
                     Bullets.Add(bullet); 
                 }

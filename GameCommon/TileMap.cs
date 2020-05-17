@@ -47,5 +47,10 @@ namespace GameCommon
             else
                 return true;
         }
+
+        ~TileMap()
+        {
+            Tiles = null;
+        }
     }
 }

@@ -22,7 +22,21 @@ namespace GameCommon
 
         protected bool isCollision(GameObject firstObject, GameObject secondObject)
         {
-            return CountDistance(firstObject, secondObject) < (firstObject.Size + secondObject.Size);
+            return CountDistance(firstObject, secondObject) < (firstObject.Size / 2 + secondObject.Size / 2);
+        }
+
+        bool isPlayersCollision(Player player, int time)
+        {
+            bool result = false;
+            foreach(var checkPlayer in Players.Values.ToArray())
+            {
+                if(checkPlayer.PlayerID != player.PlayerID)
+                {
+                    if (isCollision(player, checkPlayer))
+                        result = true;
+                }
+            }
+            return result;
         }
 
         protected bool isWallCollision(MovableGameObject gameObject, int time)
@@ -36,12 +50,12 @@ namespace GameCommon
             /*return Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y + gameObject.Size)) 
                 || Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y - gameObject.Size)) 
                 || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y + gameObject.Size))
-                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y - gameObject.Size));*/
+                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y - gameObject.Size))*/;
         }
 
         protected virtual void updatePlayers(int time)
         {
-            foreach (var player in Players.Values)
+            foreach (var player in Players.Values.ToArray())
             {
                 updatePhysicsPlayer(player, time);
             }
@@ -49,23 +63,25 @@ namespace GameCommon
 
         protected Player updatePhysicsPlayer(Player player, int time)
         {
-            if ((player.PlayerState & PlayerState.MoveFront) != 0 && !isWallCollision(player, time))
-            {
-                player.MoveFront(time);
-            }
-            if ((player.PlayerState & PlayerState.MoveBack) != 0 && !isWallCollision(
-                new MovableGameObject()
-                {
-                    Direction = new Vector2D(-player.Direction.X, -player.Direction.Y),
-                    Position = player.Position
-                }, time))
-            {
-                player.MoveBack(time);
-            }
             if ((player.PlayerState & PlayerState.RotateRight) != 0)
                 player.RotateRight(time);
             if ((player.PlayerState & PlayerState.RotateLeft) != 0)
                 player.RotateLeft(time);
+            if ((player.PlayerState & PlayerState.MoveFront) != 0 && !isWallCollision(player, time) 
+                && !isPlayersCollision(player, time))
+            {
+                player.MoveFront(time);
+            }
+            if ((player.PlayerState & PlayerState.MoveBack) != 0)
+            {
+                var testPlayer = new Player(player.PlayerID)
+                {
+                    Position = player.Position,
+                    Direction = new Vector2D(-player.Direction.X, -player.Direction.Y)
+                };
+                if(!isWallCollision(testPlayer, time) && !isPlayersCollision(testPlayer, time))
+                    player.MoveBack(time);
+            }
             return player;
         }
 
@@ -73,20 +89,17 @@ namespace GameCommon
         {
             for (int i = 0; i < Bullets.Count; i++)
             {
-                time = Environment.TickCount -  Bullets[i].LastUpdateTime;
+             //   time = Environment.TickCount -  Bullets[i].LastUpdateTime;
                 if(isWallCollision(Bullets[i], time))
-                {
+                { 
                     Bullets[i].IsDestroy = true;
                     continue;
                 }
-                Bullets[i].Position.X += Bullets[i].Direction.X * Bullets[i].Speed * time;
-                Bullets[i].Position.Y += Bullets[i].Direction.Y * Bullets[i].Speed * time;
+                Bullets[i].Move(time);
                 List<int> playersIDs = new List<int>(Players.Keys.AsEnumerable());
                 foreach (var playerID in playersIDs)
                     if (isCollision(Bullets[i], Players[playerID]))
                     {
-                        // Players[playerID].Health -= Bullets[i].Damage;
-                        //Bullets[i].IsDestroy = true;
                         if(EventPlayerShooted.GetInvocationList().Count() > 0)
                             EventPlayerShooted(Bullets[i], playerID);
                     }
@@ -99,7 +112,7 @@ namespace GameCommon
             updateBullets(time);
             updatePlayers(time);
 
-            List<int> idArray = new List<int>(Players.Keys.AsEnumerable());
+            List<int> idArray = new List<int>(Players.Keys.ToArray());
             foreach (var playerID in idArray)
             {
                 if (Players[playerID].Health <= 0)

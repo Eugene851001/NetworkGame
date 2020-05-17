@@ -12,16 +12,16 @@ namespace ClientGame
     {
         public Animation AnimationWalkFront;
         public Animation AnimationWalkBack;
-        public Animation AnimationAttack;
+        public Animation AnimationAttackFront;
         public Animation AnimationDie;
         public Animation AnimationNoneFront;
         public Animation AnimationNoneBack;
 
-        public int PlayerID;
+        new public int PlayerID;
         int timeLastStateUpdate;
         int physicalUpdateInterval;
 
-        public AnimatedPlayer(int physicalUpdateInterval)
+        public AnimatedPlayer(int physicalUpdateInterval): base(-1)
         {
             this.physicalUpdateInterval = physicalUpdateInterval;
             timeLastStateUpdate = 0;
@@ -29,7 +29,7 @@ namespace ClientGame
 
         double getAngle(Player player)
         {
-            double result = Vector2D.GetAngle(player.Direction, this.Direction);
+             double result = Vector2D.GetAngle(player.Direction, this.Direction);
             while (result < 0)
                 result += Math.PI * 2;
             while (result > Math.PI * 2)
@@ -48,11 +48,29 @@ namespace ClientGame
                 else
                     AnimationWalkBack.UpdateAnimation(elapsedTime);
             }
+            if((PlayerState & PlayerState.Shoot) != 0)
+            {
+                AnimationAttackFront.UpdateAnimation(elapsedTime);
+            }
+        }
+
+        int getCurrentAnimationTime()
+        {
+            Animation result = AnimationNoneFront;
+            if((PlayerState & PlayerState.MoveFront) != 0 || (PlayerState & PlayerState.MoveBack) != 0)
+            {
+                result = AnimationWalkFront;
+            }
+            if((PlayerState & PlayerState.Shoot) != 0)
+            {
+                result = AnimationAttackFront;
+            }
+            return result.Frames.Length * result.TimeForFrame;
         }
 
         public void UpdatePlayer(Player playerToDraw, int time)
         {
-            if(time - timeLastStateUpdate > physicalUpdateInterval)
+            if(time - timeLastStateUpdate > getCurrentAnimationTime())
             {
                 timeLastStateUpdate = time;
                 this.PlayerState = playerToDraw.PlayerState;
@@ -76,7 +94,7 @@ namespace ClientGame
             }
             else if((this.PlayerState & PlayerState.Shoot) != 0)
             {
-                texture = AnimationAttack.GetCurrentFrame();
+                texture = AnimationAttackFront.GetCurrentFrame();
             }
             else
             {

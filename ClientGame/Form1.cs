@@ -18,6 +18,7 @@ namespace ClientGame
     {
         const int TileSize = 60;
         GameClient client;
+        string playerName;
 
         const int SeverID = -1;
 
@@ -40,10 +41,12 @@ namespace ClientGame
         Animation animationPlayerMoveBack;
         Animation animationPlayerNoneFront;
         Animation animationPlayerNoneBack;
+        Animation animationShootFront;
 
-        public Form1()
+        public Form1(string playerName)
         {
             InitializeComponent();
+            this.playerName = playerName;
 
             wallTextures = new Dictionary<int, Bitmap>();
             wallTextures.Add(1, new Bitmap("textures/BrickWall.bmp"));
@@ -73,6 +76,12 @@ namespace ClientGame
                 new Bitmap("textures/direction_back/SPR_BJ_M3.BMP"),
                 new Bitmap("textures/direction_back/SPR_BJ_M4.BMP")};
 
+            animationShootFront = new Animation(500);
+            animationShootFront.Frames = new Bitmap[] { new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK1.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK2.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK3.BMP"),
+                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK4.BMP")};
+
             client = new GameClient();
             string map = "";
             map += "########";
@@ -92,6 +101,7 @@ namespace ClientGame
             render3D = new Render3D(gameLogic.Map, wallTextures);
             client.ReceiveMessageHandler += HandleMessage;
             client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
+            client.SendMessage(new MessageRegistration() { Name = playerName });
             messageToSend = new MessagePlayerAction();
 
             Thread threadGameLoop = new Thread(gameLoop);
@@ -123,7 +133,8 @@ namespace ClientGame
             int lastTime = 0;
             int accumulatedTime = 0;
             int messageCounter = 0;
-            while(true)
+            client.SendMessage(new MessageRegistration() { Name = playerName });
+            while (true)
             {
                 int thisTime = (int)watch.ElapsedMilliseconds;
                 int elapsedTime = thisTime - lastTime;
@@ -175,6 +186,9 @@ namespace ClientGame
 
                     newPlayer.AnimationWalkBack = new Animation(animationPlayerMoveBack.TimeForFrame);
                     newPlayer.AnimationWalkBack.Frames = animationPlayerMoveBack.Frames;
+
+                    newPlayer.AnimationAttackFront = new Animation(animationShootFront.TimeForFrame);
+                    newPlayer.AnimationAttackFront.Frames = animationShootFront.Frames;
                     // newPlayer.AnimationDie = 
                     var logicPlayer = gameLogic.Players[playerID];
                     newPlayer.UpdatePlayer(logicPlayer, Environment.TickCount);
@@ -190,11 +204,22 @@ namespace ClientGame
 
         void HandleMessage(GameMessage message)
         {
-            if (message.MessageType == MessageType.PlayerInfo && 
+            if (message.MessageType == MessageType.PlayerInfo &&
                 !gameLogic.Players.ContainsKey(message.PlayerID))
-                client.SendMessage(new MessageAddPlayer());
+            {
+                if (gameLogic.ThisPlayerID == -1)
+                    client.SendMessage(new MessagePersonalAddPlayer());
+                else
+                    client.SendMessage(new MessageAddPlayer());
+            }
+            else if (message.MessageType == MessageType.Regitsration)
+            {
+                client.SendMessage(new MessageRegistration() { Name = playerName });
+            }
             else
+            {
                 gameLogic.HandleMessage(message);
+            }
         }
 
         void DrawPlayer(Graphics g, Player playerInfo)
@@ -290,7 +315,6 @@ namespace ClientGame
                     (int)drawEndPosition.X, (int)drawEndPosition.Y);
             }
         }
-
 
         void updateView()
         {

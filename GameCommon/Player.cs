@@ -24,13 +24,14 @@ namespace GameCommon
     public class Player: MovableGameObject
     {
         Weapon weapon;
-        int playerID;
+        protected int playerID;
+        public int PlayerID { get { return playerID; } }
         public int Health;
         public double ViewAngle;
-        public double RotateSpeed = Math.PI / 1000;
+        double RotateSpeed = Math.PI / 1000;
         public PlayerState PlayerState = PlayerState.None;
 
-        public Player(Vector2D position, int health, double speed)
+        public Player(Vector2D position, int health, double speed, int playerID)
         {
             
             Position = position;
@@ -39,22 +40,22 @@ namespace GameCommon
             Direction = new Vector2D(0, 0);
             Size = 10;
             weapon = new Weapon();
-            playerID = 0;
+            this.playerID = playerID;
         }
 
-        public Player()
+        public Player(int playerID)
         {
             Position = new Vector2D(0, 0);
             Health = 100;
             Speed = 0.01f;
             Direction = new Vector2D(0, 0);
             weapon = new Weapon();
-            playerID = 0;
+            this.playerID = playerID;
         }
 
         public Bullet Shoot(int time)
         {
-            return weapon.Shoot(this.Direction, this.Position, this.playerID, time);
+            return weapon.Shoot(this, time);
         }
 
         public void ChangeDirection(Vector2D direction)
@@ -80,8 +81,7 @@ namespace GameCommon
         {
             Direction.X = Math.Cos(ViewAngle);
             Direction.Y = Math.Sin(ViewAngle);
-            Position.X += Direction.X * time * Speed;
-            Position.Y += Direction.Y * time * Speed;
+            base.Move((int)time);
         }
 
         public void MoveBack(float time)

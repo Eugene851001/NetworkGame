@@ -18,6 +18,7 @@ namespace ClientGame
         const string BroadcastIP = "192.168.48.255";
         const int ServerPort = 8005;
         Socket socketServerHandler;
+        Socket socketUdpHandler;
         ISerialize messageSerializer;
         public bool IsConnected = false;
 
@@ -28,6 +29,43 @@ namespace ClientGame
         {
             messageSerializer = new SerializerBinary();
             socketServerHandler = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public void SetUdpEndPoint()
+        {
+            socketUdpHandler = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, 0);
+            socketUdpHandler.Bind(localEndPoint);
+        }
+
+        public void ReceiveMessagesUdp()
+        {
+
+            byte[] data = new byte[1024];
+            EndPoint endPoint = socketUdpHandler.LocalEndPoint;
+            while (true)
+            {
+                int amount = socketUdpHandler.ReceiveFrom(data, ref endPoint);
+                MemoryStream messageContainer = new MemoryStream(data, 0, data.Length);
+                MessageServerInfo messageServerInfo = 
+                    (MessageServerInfo)messageSerializer.Deserialize(messageContainer, 
+                    typeof(MessageServerInfo), null);
+                ReceiveMessageHandler(messageServerInfo);
+                    return;
+            }
+        }
+
+        public void UdpBroadcastRequest()
+        {
+            MessageSearchRequest message = new MessageSearchRequest();
+            message.Port = ((IPEndPoint)socketUdpHandler.LocalEndPoint).Port;
+            message.IPAdress = "127.0.0.1";
+            IPEndPoint IPendPoint = new IPEndPoint(IPAddress.Parse(BroadcastIP), ServerPort);
+            Socket sendRequest = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            sendRequest.SendTo(messageSerializer.Serialize(message, message.GetType()), IPendPoint);
+            Thread threadReceiveUdp = new Thread(ReceiveMessagesUdp);
+            threadReceiveUdp.IsBackground = true;
+            threadReceiveUdp.Start();
         }
 
         public bool Connect(IPEndPoint iPEnd)
@@ -61,7 +99,7 @@ namespace ClientGame
         {
             if (Connect(endPoint))
             {
-           //     SendMessage(new MessageAddPlayer());
+                SendMessage(new MessageAddPlayer());
                 Thread threadServerConnection = new Thread(ReceiveMessages);
                 threadServerConnection.Start();
                 return true;
@@ -105,11 +143,6 @@ namespace ClientGame
                     return;
                 }
             } while (IsConnected);
-        }
-
-        public async Task<bool> AsyncSendMessage(GameMessage message)
-        {
-            return SendMessage(message);
         }
 
         public bool SendMessage(GameMessage message)

@@ -16,10 +16,11 @@ namespace ServerGame
 {
     static class TcpGameServer
     {
-        public const int chatDialogId = 0;
-        const int port = 8005;
-        const string address = "127.0.0.1";
+        public const int ChatDialogId = 0;
+        const int Port = 8005;
+        const string Address = "127.0.0.1";
         const int MaxUsersAmount = 10;
+       // const int MaxPlayersAmount = 10;
 
         const int PhysicsUpdateInterval = 100;
 
@@ -30,10 +31,51 @@ namespace ServerGame
 
         static ServerGameLogic gameLogic = new ServerGameLogic();
 
+        public static void HandleSearchMessage(MessageSearchRequest message)
+        {
+            while (gameLogic == null) ;
+            MessageServerInfo messageResponse = new MessageServerInfo()
+            {
+                IPAdress = "127.0.0.1",
+                Port = Port,
+                MaxPlayersAmount = MaxUsersAmount,
+                CurrentPlayersAmount = gameLogic.Players.Count,
+                MapName = "Level 1",
+                MapWidth = gameLogic.Map.Width,
+                MapHeight = gameLogic.Map.Height
+
+            };
+            //Message messageResponse = new Message(StandartInfo.GetCurrentIP().ToString(), port, MessageType.SearchResponse);
+            Socket socketSetAdress = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(message.IPAdress), message.Port);
+            socketSetAdress.SendTo(messageSerializer.Serialize(messageResponse, messageResponse.GetType()), endPoint);
+        }
+
+        public static void ListenUdpBroadcast()
+        {
+            Socket socketListener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, Port);
+            socketListener.Bind(localEndPoint);
+            byte[] data = new byte[1024 * 5];
+            EndPoint endPoint = localEndPoint;
+            Console.WriteLine("The server avaible (UDP)");
+            while (true)
+            {
+                int amount = socketListener.ReceiveFrom(data, ref endPoint);
+                MemoryStream messageContainer = new MemoryStream(data, 0, data.Length);
+                messageContainer.Position = 0;
+                MessageSearchRequest message = (MessageSearchRequest)messageSerializer.Deserialize(messageContainer,
+                    typeof(MessageSearchRequest), null);
+            //    if (message.MessageType == MessageType.SearchRequest)
+                HandleSearchMessage(message);
+            }
+        }
+
+
         public static void ListenTcp()
         {
             Socket socketListener;
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(address), port);
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(Address), Port);
             socketListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socketListener.Bind(endPoint);
             socketListener.Listen(MaxUsersAmount);
@@ -56,7 +98,7 @@ namespace ServerGame
                 Socket socketClientHandler = socketListener.Accept();
                 ConnectionHandler connection = new ConnectionHandler(socketClientHandler, playerCounter);
                 connection.EventOnMessageReceive += AddCheckedMessage;// gameLogic.AddMessage;
-                Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000);
+                Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000, playerCounter);
                 newPlayer.Size = 0.5;
                 gameLogic.Players.Add(playerCounter, newPlayer);
                 playersSockets.Add(playerCounter, socketClientHandler);
@@ -74,9 +116,24 @@ namespace ServerGame
         public static void AddCheckedMessage(GameMessage message)
         {
             if (message.MessageType == MessageType.AddPlayer)
+            {
                 SendAddPlayersInfo(playersSockets[message.PlayerID]);
+            }
+            else if (message.MessageType == MessageType.Regitsration)
+            {
+                if (!gameLogic.PlayersNames.ContainsKey(message.PlayerID))
+                    gameLogic.PlayersNames.Add(message.PlayerID, ((MessageRegistration)message).Name);
+            }
+            else if (message.MessageType == MessageType.PersonalAddPlayer)
+            {
+                if (playersSockets.ContainsKey(message.PlayerID))
+                    SendMessage(new MessagePersonalAddPlayer() { PlayerID = message.PlayerID },
+                        playersSockets[message.PlayerID]);
+            }
             else
+            {
                 gameLogic.AddMessage(message);
+            }
             if (message.MessageType == MessageType.DeletePlayer)
             {
                 SendToAll(new MessageDeletePlayer() { PlayerID = message.PlayerID });
@@ -101,6 +158,9 @@ namespace ServerGame
                     gameLogic.ProceedMessages();
                     gameLogic.UpdateGame(PhysicsUpdateInterval);
                     SendUpdatedPlayersInfo();
+                    foreach (int playerID in playersSockets.Keys)
+                        if (!gameLogic.PlayersNames.ContainsKey(playerID))
+                            SendMessage(new MessageRegistration(), playersSockets[playerID]);
                 }
             }
         }
@@ -144,7 +204,9 @@ namespace ServerGame
         public static void StartListen()
         {
             Thread handleTcp = new Thread(ListenTcp);
+            Thread handleUdp = new Thread(ListenUdpBroadcast);
             handleTcp.Start();
+            handleUdp.Start();
         }
          
         public static void SendMessage(GameMessage message, Socket socketClient)
