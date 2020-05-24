@@ -86,10 +86,12 @@ namespace ServerGame
             map += "########";
             map += "#......#";
             map += "#....#.#";
+            map += "##.###.#";
+            map += "#......#";
             map += "########";
-            gameLogic.Map = new TileMap(8, 4, map);
+            gameLogic.Map = new TileMap(8, 6, map);
 
-            Thread threadUpdateGame = new Thread(GameLoop);
+            Thread threadUpdateGame = new Thread(gameLoop);
         //    threadUpdateGame.IsBackground = true;
             threadUpdateGame.Start();
 
@@ -100,7 +102,7 @@ namespace ServerGame
                 connection.EventOnMessageReceive += AddCheckedMessage;// gameLogic.AddMessage;
                 Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000, playerCounter);
                 newPlayer.Size = 0.5;
-                gameLogic.Players.Add(playerCounter, newPlayer);
+                gameLogic.AddPlayer(playerCounter, newPlayer);
                 playersSockets.Add(playerCounter, socketClientHandler);
 
                 SendMessage(new MessagePersonalAddPlayer() 
@@ -122,13 +124,19 @@ namespace ServerGame
             else if (message.MessageType == MessageType.Regitsration)
             {
                 if (!gameLogic.PlayersNames.ContainsKey(message.PlayerID))
+                {
                     gameLogic.PlayersNames.Add(message.PlayerID, ((MessageRegistration)message).Name);
+                    gameLogic.Players[message.PlayerID].Name = ((MessageRegistration)message).Name;
+                }
             }
             else if (message.MessageType == MessageType.PersonalAddPlayer)
             {
                 if (playersSockets.ContainsKey(message.PlayerID))
-                    SendMessage(new MessagePersonalAddPlayer() { PlayerID = message.PlayerID },
-                        playersSockets[message.PlayerID]);
+                    SendMessage(new MessagePersonalAddPlayer() { 
+                        PlayerID = message.PlayerID, 
+                        Map = gameLogic.Map 
+                    },
+                    playersSockets[message.PlayerID]);
             }
             else
             {
@@ -141,7 +149,7 @@ namespace ServerGame
             }
         }
 
-        public static void GameLoop()
+        static void gameLoop()
         {
             Stopwatch watch = Stopwatch.StartNew();
             int lastTime = 0;
@@ -160,7 +168,7 @@ namespace ServerGame
                     SendUpdatedPlayersInfo();
                     foreach (int playerID in playersSockets.Keys)
                         if (!gameLogic.PlayersNames.ContainsKey(playerID))
-                            SendMessage(new MessageRegistration(), playersSockets[playerID]);
+                            SendMessage(new MessageRegistration() { PlayerID = playerID}, playersSockets[playerID]);
                 }
             }
         }

@@ -14,27 +14,34 @@ using System.Threading;
 
 namespace ClientGame
 {
+
+
     public partial class Form1 : Form
     {
         const int TileSize = 60;
+        const int ScreenWidth = 480;
+        const int ScreenHeight = 640;
         GameClient client;
         string playerName;
 
-        const int SeverID = -1;
+        GameState gameState;
+
 
         ClientGameLogic gameLogic;
         Render3D render3D;
 
-       // const int RenderInterval = 40;
+        // const int RenderInterval = 40;
         const int PhysicsUpdateInterval = 100;
 
         Bitmap textureBullet;
         Bitmap texturePlayer;
+        Bitmap textureInterface;
 
         Dictionary<int, Bitmap> wallTextures;
 
         MessagePlayerAction messageToSend;
         int fps = 0;
+        bool isConnected;
 
         Dictionary<int, AnimatedPlayer> animatedPlayers = new Dictionary<int, AnimatedPlayer>();
         Animation animationPlayerMoveFront;
@@ -43,6 +50,12 @@ namespace ClientGame
         Animation animationPlayerNoneBack;
         Animation animationShootFront;
 
+        Bitmap statusBar;
+
+        FirstPersonAnimation firstPerson = new FirstPersonAnimation();
+
+        GameSoundPlayer soundPlayer = new GameSoundPlayer();
+
         public Form1(string playerName)
         {
             InitializeComponent();
@@ -50,6 +63,9 @@ namespace ClientGame
 
             wallTextures = new Dictionary<int, Bitmap>();
             wallTextures.Add(1, new Bitmap("textures/BrickWall.bmp"));
+
+            statusBar = new Bitmap("textures/STATUSBARPIC.BMP");
+            statusBar = new Bitmap(statusBar, ScreenWidth + 20, 50);
 
             textureBullet = new Bitmap("textures/Bullet.jpg");
             texturePlayer = new Bitmap("textures/Player.jpg");
@@ -61,8 +77,8 @@ namespace ClientGame
                 new Bitmap("textures/direction_front/SPR_BJ_M4.BMP")};
 
             animationPlayerNoneFront = new Animation(1000);
-            animationPlayerNoneFront.Frames = new Bitmap[] { 
-                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNREADY.BMP") 
+            animationPlayerNoneFront.Frames = new Bitmap[] {
+                new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNREADY.BMP")
             };
 
             animationPlayerNoneBack = new Animation(1000);
@@ -82,6 +98,20 @@ namespace ClientGame
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK3.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK4.BMP")};
 
+            textureInterface = new Bitmap("textures/first_person/SPR_MACHINEGUNREADY.BMP");
+
+            firstPerson.AnimationReady = new Animation(1000);
+            firstPerson.AnimationReady.Frames = new Bitmap[] { new Bitmap("textures/first_person/SPR_MACHINEGUNREADY.BMP") };
+
+            firstPerson.AnimationShoot = new Animation(500);
+            firstPerson.AnimationShoot.Frames = new Bitmap[] { new Bitmap("textures/first_person/SPR_MACHINEGUNATK1.BMP"),
+                new Bitmap("textures/first_person/SPR_MACHINEGUNATK2.BMP"),
+                new Bitmap("textures/first_person/SPR_MACHINEGUNATK3.BMP"),
+                new Bitmap("textures/first_person/SPR_MACHINEGUNATK4.BMP")};
+
+
+            soundPlayer.LoadSound("shoot", "audio/gun-gunshot-01.wav");
+
             client = new GameClient();
             string map = "";
             map += "########";
@@ -93,14 +123,22 @@ namespace ClientGame
             gameLogic.EventChangeState += (Player playerToDraw, int playerID)
                 => { if (animatedPlayers.ContainsKey(playerID))
                         animatedPlayers[playerID].UpdatePlayer(playerToDraw, Environment.TickCount);
-                    };
-            gameLogic.EventDeletePlayer += (int playerID) 
+                };
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => { if (playerID == gameLogic.ThisPlayerID)
+                        firstPerson.UpdatePlayer(playerToDraw, Environment.TickCount);
+                };
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => { if (playerID == gameLogic.ThisPlayerID)
+                        updateStatusView();
+                  };
+            gameLogic.EventDeletePlayer += (int playerID)
                 => { if (animatedPlayers.ContainsKey(playerID))
                         animatedPlayers.Remove(playerID);
-                        };
+                };
             render3D = new Render3D(gameLogic.Map, wallTextures);
             client.ReceiveMessageHandler += HandleMessage;
-            client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
+            isConnected = client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
             client.SendMessage(new MessageRegistration() { Name = playerName });
             messageToSend = new MessagePlayerAction();
 
@@ -123,7 +161,12 @@ namespace ClientGame
             if (KeyboardState.IsKeyDown((int)Keys.Down))
                 result |= PlayerActionType.MoveBack;
             if (KeyboardState.IsKeyDown((int)Keys.Space))
+            {
+                soundPlayer.PlaySound("shoot", false);
                 result |= PlayerActionType.Shoot;
+            }
+            if (KeyboardState.IsKeyDown((int)Keys.Escape))
+                result |= PlayerActionType.Pause;
             return result;
         }
 
@@ -133,8 +176,9 @@ namespace ClientGame
             int lastTime = 0;
             int accumulatedTime = 0;
             int messageCounter = 0;
-            client.SendMessage(new MessageRegistration() { Name = playerName });
-            while (true)
+            // client.SendMessage(new MessageRegistration() { Name = playerName });
+            gameState = GameState.Run;
+            while (isConnected)
             {
                 int thisTime = (int)watch.ElapsedMilliseconds;
                 int elapsedTime = thisTime - lastTime;
@@ -148,10 +192,29 @@ namespace ClientGame
                 while (accumulatedTime > PhysicsUpdateInterval)
                 {
                     PlayerActionType action = fetchInput();
+                    if ((action & PlayerActionType.Pause) != 0)
+                    {
+                        gameState = GameState.Pause;
+                        FormPause formPause = null;
+                        Action actionForm = delegate {
+                            formPause = new FormPause(gameLogic.Players.Values.ToArray());
+                            formPause.ShowDialog();
+                        };
+                        Invoke(actionForm);
+                        gameState = formPause.GameState;
+                        if (gameState == GameState.Exit)
+                        {
+                            actionForm = delegate
+                            {
+                                this.Close();
+                            };
+                            Invoke(actionForm);
+                        }
+                    }
                     if (action != PlayerActionType.None)
                     {
                         MessagePlayerAction messageAction = new MessagePlayerAction()
-                            { Action = action, InputNumber = messageCounter};
+                        { Action = action, InputNumber = messageCounter };
                         messageCounter++;
                         client.SendMessage(messageAction);
                         gameLogic.LastMessage = messageAction;
@@ -162,16 +225,18 @@ namespace ClientGame
                     gameLogic.UpdateGame(PhysicsUpdateInterval);
                 }
                 updateAnimatedPlayers(elapsedTime);
+                firstPerson.UpdateAnimation(elapsedTime);
+           //     updateStatusView();
                 updateView();
-               // Invalidate();
+                // Invalidate();
             }
         }
 
         void updateAnimatedPlayers(int time)
         {
-            foreach(var playerID in gameLogic.Players.Keys.ToArray())
+            foreach (var playerID in gameLogic.Players.Keys.ToArray())
             {
-                if(!animatedPlayers.ContainsKey(playerID) && playerID != gameLogic.ThisPlayerID)
+                if (!animatedPlayers.ContainsKey(playerID) && playerID != gameLogic.ThisPlayerID)
                 {
                     AnimatedPlayer newPlayer = new AnimatedPlayer(PhysicsUpdateInterval);
 
@@ -196,7 +261,7 @@ namespace ClientGame
                     animatedPlayers.Add(playerID, newPlayer);
                 }
             }
-            foreach(AnimatedPlayer animatedPlayer in animatedPlayers.Values)
+            foreach (AnimatedPlayer animatedPlayer in animatedPlayers.Values)
             {
                 animatedPlayer.UpdateAnimation(gameLogic.GetThisPlayer(), time);
             }
@@ -218,6 +283,8 @@ namespace ClientGame
             }
             else
             {
+                if (message.MessageType == MessageType.PersonalAddPlayer)
+                    render3D.SetMap(((MessagePersonalAddPlayer)message).Map);
                 gameLogic.HandleMessage(message);
             }
         }
@@ -227,13 +294,13 @@ namespace ClientGame
             Vector2D drawPosition = new Vector2D();
             drawPosition.X = playerInfo.Position.X * TileSize;
             drawPosition.Y = playerInfo.Position.Y * TileSize;
-            Vector2D viewDirection = new Vector2D(Math.Cos(playerInfo.ViewAngle), 
+            Vector2D viewDirection = new Vector2D(Math.Cos(playerInfo.ViewAngle),
                 Math.Sin(playerInfo.ViewAngle));
             float playerSize = (float)playerInfo.Size * TileSize;
-            g.FillEllipse(new SolidBrush(Color.Red), (float)drawPosition.X - playerSize / 2, (float)drawPosition.Y 
-                - playerSize / 2, playerSize,  playerSize);
-            g.DrawLine(new Pen(Color.Blue, 3), (float)drawPosition.X, (float)drawPosition.Y, 
-                (float)(drawPosition.X + viewDirection.X * (playerSize / 2)), 
+            g.FillEllipse(new SolidBrush(Color.Red), (float)drawPosition.X - playerSize / 2, (float)drawPosition.Y
+                - playerSize / 2, playerSize, playerSize);
+            g.DrawLine(new Pen(Color.Blue, 3), (float)drawPosition.X, (float)drawPosition.Y,
+                (float)(drawPosition.X + viewDirection.X * (playerSize / 2)),
                 (float)(drawPosition.Y + viewDirection.Y * (playerSize / 2)));
         }
 
@@ -241,21 +308,21 @@ namespace ClientGame
         {
             Vector2D drawPosition = new Vector2D();
             List<Bullet> saveBullets = new List<Bullet>(gameLogic.Bullets);
-            foreach(var bullet in saveBullets)
+            foreach (var bullet in saveBullets)
             {
                 drawPosition.X = bullet.Position.X * TileSize;
                 drawPosition.Y = bullet.Position.Y * TileSize;
-                int drawSize = (int)(bullet.Size * TileSize );
+                int drawSize = (int)(bullet.Size * TileSize);
                 g.FillEllipse(new SolidBrush(Color.Black), (float)drawPosition.X - drawSize / 2,
                    (float)drawPosition.Y - drawSize / 2, drawSize, drawSize);
             }
-          //  g.FillEllipse(new SolidBrush(Color.Black), 0, 0, 200, 200);
+            //  g.FillEllipse(new SolidBrush(Color.Black), 0, 0, 200, 200);
         }
 
         void DrawMap(Graphics g, TileMap map)
         {
-            for(int i = 0; i < map.Height; i++)
-                for(int j = 0; j < map.Width; j++)
+            for (int i = 0; i < map.Height; i++)
+                for (int j = 0; j < map.Width; j++)
                 {
                     SolidBrush brush;
                     if (map.IsSolid(j, i))
@@ -311,7 +378,7 @@ namespace ClientGame
                 Vector2D drawEndPosition = new Vector2D(drawPosition);
                 drawEndPosition.X += wallDistance * Math.Cos(rayAngle) * TileSize;
                 drawEndPosition.Y += wallDistance * Math.Sin(rayAngle) * TileSize;
-                g.DrawLine(new Pen(Color.Red), (int)drawPosition.X, (int)drawPosition.Y, 
+                g.DrawLine(new Pen(Color.Red), (int)drawPosition.X, (int)drawPosition.Y,
                     (int)drawEndPosition.X, (int)drawEndPosition.Y);
             }
         }
@@ -331,15 +398,43 @@ namespace ClientGame
             DrawChat(g);
             if (gameLogic.GetThisPlayer() == null)
                 return;
-         //   drawRays(gameLogic.GetThisPlayer(), g);
-            Bitmap frame = getFrame();
-            if(frame != null)
+            //   drawRays(gameLogic.GetThisPlayer(), g);
+            Bitmap frame = getFrame(ScreenHeight, ScreenWidth);
+            if (frame != null)
+            {
+                frame.Palette = wallTextures[1].Palette;
                 pbScreen.Image = frame;
+            }
         }
 
-        Bitmap getFrame()
+        void updateStatusView()
         {
-            Bitmap frame = new Bitmap(300, 300);
+            if (gameLogic.GetThisPlayer() != null)
+                pbStatusBar.Image = drawCurrentStatus(statusBar, gameLogic.GetThisPlayer());
+        }
+
+        Bitmap drawCurrentStatus(Bitmap statusBar, Player player)
+        {
+            Bitmap canvas = new Bitmap(statusBar);
+            int width = statusBar.Width;
+            const int StartY = 20;
+            const double LevelStarts = 0.045;
+            const double ScoreStarts = 0.305;
+            const double LiveStarts = 0.50;
+            const double HealthStarts = 0.825;
+            SolidBrush brushString = new SolidBrush(Color.White);
+            Graphics g = Graphics.FromImage(canvas);
+            Font drawFont = new Font("System", 12);
+            g.DrawString("Level 1", drawFont, brushString, (int)(LevelStarts * width), StartY);
+            g.DrawString(player.Score.ToString(), drawFont, brushString, (int)(ScoreStarts * width), StartY);
+            g.DrawString(player.Lives.ToString(), drawFont, brushString, (int)(LiveStarts * width), StartY);
+            g.DrawString(player.Health.ToString(), drawFont, brushString, (int)(HealthStarts * width), StartY);
+            return canvas;
+        }
+
+        Bitmap getFrame(int width, int height)
+        {
+            Bitmap frame = new Bitmap(300, 300, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             frame = render3D.DrawWalls(gameLogic.GetThisPlayer(), frame);
             List<GameObject> gameObjects;
             try
@@ -369,10 +464,9 @@ namespace ClientGame
                         PlayerID], gameLogic.GetThisPlayer(), frame, animationTexture, true);
                 }
             }
-            //Bitmap texture = new Bitmap(0, 0,);
-            //frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, texturePlayer, true);
-            gameObjects = new List<GameObject>(gameLogic.Bullets);
-            frame = render3D.DrawGameObjects(gameObjects, gameLogic.GetThisPlayer(), frame, textureBullet, false);
+            Bitmap textureInterface = firstPerson.GetTexture();
+            frame = render3D.DrawInterface(frame, textureInterface);
+            frame = render3D.GetScaledImage(frame, width, height);
             return frame;
         }
 
@@ -404,6 +498,7 @@ namespace ClientGame
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            isConnected = false;
             MessageDeletePlayer message = new MessageDeletePlayer();
             client.SendMessage(message);
         }

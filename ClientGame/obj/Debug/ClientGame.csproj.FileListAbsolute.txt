@@ -220,3 +220,5 @@ C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\bin\Debug\Serializer.
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\bin\Debug\Serializer.pdb
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormMenu.resources
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormChooseServer.resources
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormPause.resources
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormShowPlayers.resources

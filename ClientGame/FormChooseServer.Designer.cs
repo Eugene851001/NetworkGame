@@ -38,7 +38,7 @@
             this.tbIPAdress = new System.Windows.Forms.TextBox();
             this.tbPort = new System.Windows.Forms.TextBox();
             this.tbParticipants = new System.Windows.Forms.TextBox();
-            this.textBox4 = new System.Windows.Forms.TextBox();
+            this.tbMapName = new System.Windows.Forms.TextBox();
             this.tbPlayerName = new System.Windows.Forms.TextBox();
             this.lbPlayerName = new System.Windows.Forms.Label();
             this.SuspendLayout();
@@ -129,12 +129,12 @@
             this.tbParticipants.Size = new System.Drawing.Size(100, 22);
             this.tbParticipants.TabIndex = 9;
             // 
-            // textBox4
+            // tbMapName
             // 
-            this.textBox4.Location = new System.Drawing.Point(126, 164);
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(100, 22);
-            this.textBox4.TabIndex = 10;
+            this.tbMapName.Location = new System.Drawing.Point(126, 164);
+            this.tbMapName.Name = "tbMapName";
+            this.tbMapName.Size = new System.Drawing.Size(100, 22);
+            this.tbMapName.TabIndex = 10;
             // 
             // tbPlayerName
             // 
@@ -159,7 +159,7 @@
             this.ClientSize = new System.Drawing.Size(513, 336);
             this.Controls.Add(this.lbPlayerName);
             this.Controls.Add(this.tbPlayerName);
-            this.Controls.Add(this.textBox4);
+            this.Controls.Add(this.tbMapName);
             this.Controls.Add(this.tbParticipants);
             this.Controls.Add(this.tbPort);
             this.Controls.Add(this.tbIPAdress);
@@ -171,7 +171,7 @@
             this.Controls.Add(this.btConnectToServer);
             this.Controls.Add(this.btFindServer);
             this.Name = "FormChooseServer";
-            this.Text = "FormChooseServer";
+            this.Text = "Поключение к серверу";
             this.Load += new System.EventHandler(this.FormChooseServer_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -190,7 +190,7 @@
         private System.Windows.Forms.TextBox tbIPAdress;
         private System.Windows.Forms.TextBox tbPort;
         private System.Windows.Forms.TextBox tbParticipants;
-        private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.TextBox tbMapName;
         private System.Windows.Forms.TextBox tbPlayerName;
         private System.Windows.Forms.Label lbPlayerName;
     }

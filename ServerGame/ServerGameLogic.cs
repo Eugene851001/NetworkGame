@@ -12,6 +12,8 @@ namespace ServerGame
         const int MaxQueueSize = 64;
         const int ServerID = -1;
 
+        const int ScoreForShoot = 10;
+
         Queue<GameMessage> messages = new Queue<GameMessage>();
 
         public Queue<MessageChat> ChatMessages = new Queue<MessageChat>();
@@ -31,13 +33,26 @@ namespace ServerGame
             EventPlayerShooted += proceedPlayerShooted;
         }
 
+        protected override void updatePlayers(int time)
+        {
+            foreach(var player in Players.Values.ToArray())
+            {
+                updatePhysicsPlayer(player, time);
+                if ((player.PlayerState & PlayerState.Shoot) != 0)
+                    Bullets.Add(player.Shoot(Environment.TickCount));
+            }
+        }
+
         void proceedPlayerShooted(Bullet bullet, int playerID)
         {
             Players[playerID].Health -= bullet.Damage;
             bullet.IsDestroy = true;
             string content;
-            if (PlayersNames.ContainsKey(bullet.OwnerID))
-                content = PlayersNames[bullet.OwnerID];
+            if (Players.ContainsKey(bullet.OwnerID))
+            {
+                Players[bullet.OwnerID].Score += ScoreForShoot;
+                content = Players[bullet.OwnerID].Name;
+            }
             else
                 content = bullet.OwnerID.ToString();
 
@@ -46,8 +61,8 @@ namespace ServerGame
             else
                 content += " подстрелил ";
 
-            if (PlayersNames.ContainsKey(playerID))
-                content += PlayersNames[playerID];
+            if (Players.ContainsKey(playerID))
+                content += Players[playerID].Name;
             else
                 content += playerID.ToString();
             ChatMessages.Enqueue(new MessageChat()
@@ -63,6 +78,11 @@ namespace ServerGame
             {
                 messages.Enqueue(message);
             }
+        }
+
+        public void AddPlayer(int playerID, Player player)
+        {
+            Players.Add(playerID, player);
         }
 
         void handleMove(MessagePlayerAction message)
@@ -86,14 +106,6 @@ namespace ServerGame
         {
              if (!Players.ContainsKey(message.PlayerID))
                 return;
-           /*  Bullet bullet = new Bullet(message.PlayerID);
-             bullet.Direction = new Vector2D(Players[message.PlayerID].Direction);
-             bullet.Speed = Players[message.PlayerID].Speed * 4;
-             bullet.Size = Players[message.PlayerID].Size / 4;
-             Vector2D position = Players[message.PlayerID].Position;
-
-             bullet.Position = new Vector2D(position.X + bullet.Direction.X * bullet.Size * 6,
-                 position.Y + bullet.Direction.Y * bullet.Size * 6);*/
             var bullet = Players[message.PlayerID].Shoot(Environment.TickCount);
             if (bullet != null)
             {
@@ -110,14 +122,8 @@ namespace ServerGame
                 PlayersInputNumbers.Add(message.PlayerID, messageAction.InputNumber);
             else
                 PlayersInputNumbers[message.PlayerID] = messageAction.InputNumber;
-            if ((messageAction.Action & PlayerActionType.MoveBack) != 0
-                || (messageAction.Action & PlayerActionType.MoveFront) != 0)
-                handleMove(messageAction);
-            if ((messageAction.Action & PlayerActionType.RotateLeft) != 0
-                || (messageAction.Action & PlayerActionType.RotateRight) != 0)
-                handleRotate(messageAction);
-            if ((messageAction.Action & PlayerActionType.Shoot) != 0)
-                handleShoot(messageAction);
+            if(Players.ContainsKey(message.PlayerID))
+                applyInput(Players[message.PlayerID], messageAction.Action);
         }
 
         void handleMessageAdd(GameMessage message)
@@ -148,7 +154,7 @@ namespace ServerGame
             while(messages.Count > 0)
             {
                 var message = messages.Dequeue();
-                if(messageHandlers.ContainsKey(message.MessageType))
+                if (messageHandlers.ContainsKey(message.MessageType))
                     messageHandlers[message.MessageType](message);
             }
         }

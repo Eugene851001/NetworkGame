@@ -46,7 +46,7 @@
     <Compile Include="ConnectionHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Server.cs" />
+    <Compile Include="TcpGameServer.cs" />
     <Compile Include="ServerGameLogic.cs" />
   </ItemGroup>
   <ItemGroup>

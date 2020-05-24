@@ -40,7 +40,7 @@ namespace ClientGame
             messageHandlers.Add(MessageType.Chat, handleMessageChat);
             messageHandlers.Add(MessageType.DeletePlayer, handleMessageDelete);
             messageHandlers.Add(MessageType.PersonalAddPlayer, handleMessagePersonalAdd);
-            ThisPlayerID = 0;
+            ThisPlayerID = -1;
         //    messageHandlers.Add()
 
             chatMessages = new List<MessageChat>();
@@ -62,20 +62,6 @@ namespace ClientGame
             bullet.IsDestroy = true;
         }
 
-        void applyInput(Player player, PlayerActionType action)
-        {
-            if ((action & PlayerActionType.MoveFront) != 0)
-                player.PlayerState |= PlayerState.MoveFront;
-            if ((action & PlayerActionType.MoveBack) != 0)
-                player.PlayerState |= PlayerState.MoveBack;
-            if ((action & PlayerActionType.RotateLeft) != 0)
-                player.PlayerState |= PlayerState.RotateLeft;
-            if ((action & PlayerActionType.RotateRight) != 0)
-                player.PlayerState |= PlayerState.RotateRight;
-            if ((action & PlayerActionType.Shoot) != 0)
-                player.PlayerState |= PlayerState.Shoot;
-        }
-
         protected override void updatePlayers(int time)
         {
             if (!isPrediction)
@@ -89,23 +75,7 @@ namespace ClientGame
             var player = GetThisPlayer();
             if (player == null)
                 return;
-            if ((player.PlayerState & PlayerState.MoveFront) != 0 && !isWallCollision(player, time))
-            {
-                player.MoveFront(time);
-            }
-            if ((player.PlayerState & PlayerState.MoveBack) != 0 && !isWallCollision(
-                new MovableGameObject()
-                {
-                    Direction = new Vector2D(-player.Direction.X, -player.Direction.Y),
-                    Position = player.Position
-                }, time))
-            {
-                player.MoveBack(time);
-            }
-            if ((player.PlayerState & PlayerState.RotateRight) != 0)
-                player.RotateRight(time);
-            if ((player.PlayerState & PlayerState.RotateLeft) != 0)
-                player.RotateLeft(time);
+            updatePhysicsPlayer(player, time);
             player.PlayerState = player.PlayerState & (PlayerState.Killed | PlayerState.Shoot);
         }
 
@@ -169,7 +139,7 @@ namespace ClientGame
                     var bullet = newPlayer.Shoot(int.MaxValue);
                     Bullets.Add(bullet); 
                 }
-                if(messageInfo.PlayerID != ThisPlayerID && EventChangeState.GetInvocationList().Count() > 0)
+                if(EventChangeState.GetInvocationList().Count() > 0)
                 {
                     if(newPlayer.PlayerState != PlayerState.None)
                         EventChangeState(newPlayer, message.PlayerID);

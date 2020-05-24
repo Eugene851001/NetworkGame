@@ -32,8 +32,10 @@ namespace ClientGame
             {
                 tbIPAdress.Text = messageInfo.IPAdress;
                 tbPort.Text = messageInfo.Port.ToString();
+                tbMapName.Text = messageInfo.MapName;
                 tbParticipants.Text = messageInfo.CurrentPlayersAmount.ToString()
                     + "/" + messageInfo.MaxPlayersAmount.ToString();
+                lbStatus.Text = "Found";
             };
             isFoundServer = true;
             Invoke(action);

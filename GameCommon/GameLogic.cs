@@ -36,7 +36,7 @@ namespace GameCommon
                         result = true;
                 }
             }
-            return result;
+            return false;//result;
         }
 
         protected bool isWallCollision(MovableGameObject gameObject, int time)
@@ -59,6 +59,20 @@ namespace GameCommon
             {
                 updatePhysicsPlayer(player, time);
             }
+        }
+
+        protected void applyInput(Player player, PlayerActionType action)
+        {
+            if ((action & PlayerActionType.MoveFront) != 0)
+                player.PlayerState |= PlayerState.MoveFront;
+            if ((action & PlayerActionType.MoveBack) != 0)
+                player.PlayerState |= PlayerState.MoveBack;
+            if ((action & PlayerActionType.RotateLeft) != 0)
+                player.PlayerState |= PlayerState.RotateLeft;
+            if ((action & PlayerActionType.RotateRight) != 0)
+                player.PlayerState |= PlayerState.RotateRight;
+            if ((action & PlayerActionType.Shoot) != 0)
+                player.PlayerState |= PlayerState.Shoot;
         }
 
         protected Player updatePhysicsPlayer(Player player, int time)

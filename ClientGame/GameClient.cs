@@ -13,6 +13,8 @@ using SerializeHandler;
 
 namespace ClientGame
 {
+
+    public enum GameState { Run, Pause, Exit };
     public class GameClient
     { 
         const string BroadcastIP = "192.168.48.255";

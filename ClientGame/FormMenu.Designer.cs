@@ -60,7 +60,7 @@
             this.Controls.Add(this.btQuit);
             this.Controls.Add(this.btStartGame);
             this.Name = "FormMenu";
-            this.Text = "FormMenu";
+            this.Text = "Главное меню";
             this.Load += new System.EventHandler(this.FormMenu_Load);
             this.ResumeLayout(false);
 

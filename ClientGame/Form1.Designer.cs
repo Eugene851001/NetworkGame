@@ -32,7 +32,9 @@
             this.tmDraw = new System.Windows.Forms.Timer(this.components);
             this.tmUpdate = new System.Windows.Forms.Timer(this.components);
             this.pbScreen = new System.Windows.Forms.PictureBox();
+            this.pbStatusBar = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbScreen)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pbStatusBar)).BeginInit();
             this.SuspendLayout();
             // 
             // tmDraw
@@ -48,16 +50,25 @@
             // 
             this.pbScreen.Location = new System.Drawing.Point(662, 3);
             this.pbScreen.Name = "pbScreen";
-            this.pbScreen.Size = new System.Drawing.Size(668, 601);
+            this.pbScreen.Size = new System.Drawing.Size(668, 480);
             this.pbScreen.TabIndex = 0;
             this.pbScreen.TabStop = false;
             this.pbScreen.Click += new System.EventHandler(this.pbScreen_Click);
+            // 
+            // pbStatusBar
+            // 
+            this.pbStatusBar.Location = new System.Drawing.Point(662, 478);
+            this.pbStatusBar.Name = "pbStatusBar";
+            this.pbStatusBar.Size = new System.Drawing.Size(668, 56);
+            this.pbStatusBar.TabIndex = 1;
+            this.pbStatusBar.TabStop = false;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1336, 706);
+            this.Controls.Add(this.pbStatusBar);
             this.Controls.Add(this.pbScreen);
             this.DoubleBuffered = true;
             this.Name = "Form1";
@@ -68,6 +79,7 @@
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.Form1_Paint);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Form1_KeyDown);
             ((System.ComponentModel.ISupportInitialize)(this.pbScreen)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pbStatusBar)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -76,6 +88,7 @@
         private System.Windows.Forms.Timer tmDraw;
         private System.Windows.Forms.Timer tmUpdate;
         private System.Windows.Forms.PictureBox pbScreen;
+        private System.Windows.Forms.PictureBox pbStatusBar;
     }
 }
 
