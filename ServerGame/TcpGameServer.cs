@@ -18,14 +18,11 @@ namespace ServerGame
     {
         public const int ChatDialogId = 0;
         const int Port = 8005;
-        const string Address = "127.0.0.1";
         const int MaxUsersAmount = 10;
-       // const int MaxPlayersAmount = 10;
 
         const int PhysicsUpdateInterval = 100;
 
         public static Dictionary<int, Socket> playersSockets = new Dictionary<int, Socket>();
-      //  public static Dictionary<int, PlayerInfo> playersInfo = new Dictionary<int, PlayerInfo>(); 
 
         static ISerialize messageSerializer = new SerializerBinary();
 
@@ -36,7 +33,7 @@ namespace ServerGame
             while (gameLogic == null) ;
             MessageServerInfo messageResponse = new MessageServerInfo()
             {
-                IPAdress = "127.0.0.1",
+                IPAdress = NetworkInfo.GetCurrentIP().ToString(),
                 Port = Port,
                 MaxPlayersAmount = MaxUsersAmount,
                 CurrentPlayersAmount = gameLogic.Players.Count,
@@ -45,7 +42,6 @@ namespace ServerGame
                 MapHeight = gameLogic.Map.Height
 
             };
-            //Message messageResponse = new Message(StandartInfo.GetCurrentIP().ToString(), port, MessageType.SearchResponse);
             Socket socketSetAdress = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(message.IPAdress), message.Port);
             socketSetAdress.SendTo(messageSerializer.Serialize(messageResponse, messageResponse.GetType()), endPoint);
@@ -66,7 +62,6 @@ namespace ServerGame
                 messageContainer.Position = 0;
                 MessageSearchRequest message = (MessageSearchRequest)messageSerializer.Deserialize(messageContainer,
                     typeof(MessageSearchRequest), null);
-            //    if (message.MessageType == MessageType.SearchRequest)
                 HandleSearchMessage(message);
             }
         }
@@ -75,7 +70,7 @@ namespace ServerGame
         public static void ListenTcp()
         {
             Socket socketListener;
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(Address), Port);
+            IPEndPoint endPoint = new IPEndPoint(NetworkInfo.GetCurrentIP(), Port);
             socketListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socketListener.Bind(endPoint);
             socketListener.Listen(MaxUsersAmount);
@@ -83,13 +78,18 @@ namespace ServerGame
             int playerCounter = 0;
 
             string map = "";
-            map += "########";
-            map += "#......#";
-            map += "#....#.#";
-            map += "##.###.#";
-            map += "#......#";
-            map += "########";
-            gameLogic.Map = new TileMap(8, 6, map);
+            map += "##############";
+            map += "#............#";
+            map += "#....#..#....#";
+            map += "#.####..####.#";
+            map += "#............#";
+            map += "#.####..####.#";
+            map += "#....#..#....#";
+            map += "#............#";
+            map += "##############";
+            Vector2D[] spawnPoints = new Vector2D[] { new Vector2D(2, 2), 
+                new Vector2D(2, 7), new Vector2D(10, 7), new Vector2D(10, 2)};
+            gameLogic.Map = new TileMap(14, 9, map, spawnPoints);
 
             Thread threadUpdateGame = new Thread(gameLoop);
         //    threadUpdateGame.IsBackground = true;
@@ -99,7 +99,7 @@ namespace ServerGame
             {
                 Socket socketClientHandler = socketListener.Accept();
                 ConnectionHandler connection = new ConnectionHandler(socketClientHandler, playerCounter);
-                connection.EventOnMessageReceive += AddCheckedMessage;// gameLogic.AddMessage;
+                connection.EventOnMessageReceive += AddCheckedMessage;
                 Player newPlayer = new Player(new Vector2D(2, 2), 100, 0.5 / 1000, playerCounter);
                 newPlayer.Size = 0.5;
                 gameLogic.AddPlayer(playerCounter, newPlayer);
@@ -108,26 +108,18 @@ namespace ServerGame
                 SendMessage(new MessagePersonalAddPlayer() 
                     { PlayerID = playerCounter, Map = gameLogic.Map }, socketClientHandler);
                 SendAddPlayersInfo(socketClientHandler);
-                gameLogic.AddMessage(new MessageAddPlayer() { PlayerID = playerCounter, Player = newPlayer });
                 SendToAll(new MessageAddPlayer() { PlayerID = playerCounter, Player = newPlayer });
 
                 playerCounter++;
             }
         }
-
+         
         public static void AddCheckedMessage(GameMessage message)
         {
             if (message.MessageType == MessageType.AddPlayer)
             {
-                SendAddPlayersInfo(playersSockets[message.PlayerID]);
-            }
-            else if (message.MessageType == MessageType.Regitsration)
-            {
-                if (!gameLogic.PlayersNames.ContainsKey(message.PlayerID))
-                {
-                    gameLogic.PlayersNames.Add(message.PlayerID, ((MessageRegistration)message).Name);
-                    gameLogic.Players[message.PlayerID].Name = ((MessageRegistration)message).Name;
-                }
+                if(playersSockets.ContainsKey(message.PlayerID))
+                    SendAddPlayersInfo(playersSockets[message.PlayerID]);
             }
             else if (message.MessageType == MessageType.PersonalAddPlayer)
             {

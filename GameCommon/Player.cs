@@ -12,6 +12,7 @@ namespace GameCommon
         MoveBack = 8,
         RotateLeft = 16,
         RotateRight = 32,
+        Hurt = 64,
         MoveFrontShoot = Shoot | MoveFront,
         MoveBackShoot = Shoot | MoveBack,
         MoveFrontRotateRight = MoveFront | RotateRight,

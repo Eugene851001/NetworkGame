@@ -222,3 +222,4 @@ C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormChooseServer.resources
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormPause.resources
 C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormShowPlayers.resources
+C:\Users\evgeny\Desktop\netGame\GIT\NetworkGame\ClientGame\obj\Debug\ClientGame.FormRespawn.resources

@@ -10,24 +10,29 @@ namespace GameCommon
         public int Height { get; }
         public int Width { get; }
 
+        public Vector2D[] SpawnPoints { get; }
+
         public Tile[,] Tiles;
 
-        public TileMap(int width, int height)
+        public TileMap(int width, int height, Vector2D[] spawnPoints)
         {
             Width = width;
             Height = height;
             Tiles = new Tile[height, width];
+            SpawnPoints = spawnPoints;
         }
 
         public TileMap(Tile[,] tiles)
         {
+            SpawnPoints = null;
             Height = tiles.GetUpperBound(0) + 1;
             Width = tiles.Length / Height;
             Tiles = tiles;
         }
 
-        public TileMap(int width, int height, string map)
+        public TileMap(int width, int height, string map, Vector2D[] spawnPoints)
         {
+            SpawnPoints = spawnPoints;
             Width = width;
             Height = height;
             Tiles = new Tile[height, width];
@@ -46,11 +51,6 @@ namespace GameCommon
                 return Tiles[y, x].IsSolid;
             else
                 return true;
-        }
-
-        ~TileMap()
-        {
-            Tiles = null;
         }
     }
 }

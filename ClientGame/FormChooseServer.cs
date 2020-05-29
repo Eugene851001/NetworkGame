@@ -41,13 +41,35 @@ namespace ClientGame
             Invoke(action);
         }
 
+        bool isCorrectData()
+        {
+            bool result = true;
+            try
+            {
+                int.Parse(tbPort.Text);
+            }
+            catch
+            {
+                result = false;
+            }
+            return result;
+        }
+
         private void button2_Click(object sender, EventArgs e)
         {
             if(isFoundServer)
             {
-                Form1 mainForm = new Form1(tbPlayerName.Text);
-                mainForm.Show();
-                this.Hide();
+                if (isCorrectData())
+                {
+                    Form1 mainForm = new Form1(tbPlayerName.Text, tbIPAdress.Text, int.Parse(tbPort.Text));
+                    mainForm.Show();
+                    this.Hide();
+                }
+                else
+                {
+                    MessageBox.Show("Пожалуйста, проверьте введённые данные", "", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
         }
 

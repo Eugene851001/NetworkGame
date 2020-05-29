@@ -48,7 +48,7 @@
             // 
             // pbScreen
             // 
-            this.pbScreen.Location = new System.Drawing.Point(662, 3);
+            this.pbScreen.Location = new System.Drawing.Point(339, 1);
             this.pbScreen.Name = "pbScreen";
             this.pbScreen.Size = new System.Drawing.Size(668, 480);
             this.pbScreen.TabIndex = 0;
@@ -57,7 +57,7 @@
             // 
             // pbStatusBar
             // 
-            this.pbStatusBar.Location = new System.Drawing.Point(662, 478);
+            this.pbStatusBar.Location = new System.Drawing.Point(339, 476);
             this.pbStatusBar.Name = "pbStatusBar";
             this.pbStatusBar.Size = new System.Drawing.Size(668, 56);
             this.pbStatusBar.TabIndex = 1;
@@ -67,7 +67,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1336, 706);
+            this.ClientSize = new System.Drawing.Size(1012, 533);
             this.Controls.Add(this.pbStatusBar);
             this.Controls.Add(this.pbScreen);
             this.DoubleBuffered = true;

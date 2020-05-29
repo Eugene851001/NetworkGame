@@ -40,12 +40,9 @@ namespace GameCommon
 
         public static double GetAngle(Vector2D firstVector, Vector2D secondVector)
         {
-            double crossProduct = firstVector.X * secondVector.X + secondVector.Y * secondVector.Y;
-            double lengthFirst = firstVector.GetLength();
-            double lengthSecond = secondVector.GetLength();
-            if (lengthFirst == 0 || lengthSecond == 0)
-                return 0;
-            return Math.Acos(crossProduct / (lengthFirst * lengthSecond));
+            double dotProduct = firstVector.X * secondVector.X + firstVector.Y * secondVector.Y;
+            double determinant = firstVector.X * secondVector.Y - firstVector.Y * secondVector.X;
+            return Math.Atan2(determinant , dotProduct);
         }
 
         public Vector2D()

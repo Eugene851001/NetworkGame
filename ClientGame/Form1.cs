@@ -15,6 +15,7 @@ using System.Threading;
 namespace ClientGame
 {
 
+    public enum GameState { Run, Pause, Exit };
 
     public partial class Form1 : Form
     {
@@ -30,25 +31,31 @@ namespace ClientGame
         ClientGameLogic gameLogic;
         Render3D render3D;
 
-        // const int RenderInterval = 40;
         const int PhysicsUpdateInterval = 100;
-
-        Bitmap textureBullet;
-        Bitmap texturePlayer;
-        Bitmap textureInterface;
 
         Dictionary<int, Bitmap> wallTextures;
 
-        MessagePlayerAction messageToSend;
         int fps = 0;
         bool isConnected;
 
         Dictionary<int, AnimatedPlayer> animatedPlayers = new Dictionary<int, AnimatedPlayer>();
+
         Animation animationPlayerMoveFront;
         Animation animationPlayerMoveBack;
+        Animation animationPlayerMoveLeft;
+        Animation animationPlayerMoveRight;
+
         Animation animationPlayerNoneFront;
         Animation animationPlayerNoneBack;
+        Animation animationPlayerNoneLeft;
+        Animation animationPlayerNoneRight;
+
         Animation animationShootFront;
+        Animation animationShootBack;
+        Animation animationShootLeft;
+        Animation animationShootRight;
+
+        Animation animationDie;
 
         Bitmap statusBar;
 
@@ -56,7 +63,7 @@ namespace ClientGame
 
         GameSoundPlayer soundPlayer = new GameSoundPlayer();
 
-        public Form1(string playerName)
+        public Form1(string playerName, string ipAdress, int port)
         {
             InitializeComponent();
             this.playerName = playerName;
@@ -67,15 +74,81 @@ namespace ClientGame
             statusBar = new Bitmap("textures/STATUSBARPIC.BMP");
             statusBar = new Bitmap(statusBar, ScreenWidth + 20, 50);
 
-            textureBullet = new Bitmap("textures/Bullet.jpg");
-            texturePlayer = new Bitmap("textures/Player.jpg");
+            loadSprites();
+            soundPlayer.LoadSound("shoot", "audio/gun-gunshot-01.wav");
 
-            animationPlayerMoveFront = new Animation(500);
+            client = new GameClient();
+            string map = "";
+            map += "########";
+            map += "#......#";
+            map += "#....#.#";
+            map += "########";
+            gameLogic = new ClientGameLogic();
+            gameLogic.Map = new TileMap(8, 4, map, new Vector2D[] { new Vector2D(2, 2)});
+
+            render3D = new Render3D(gameLogic.Map, wallTextures);
+            client.ReceiveMessageHandler += HandleMessage;
+            isConnected = client.ConnectToServer(new IPEndPoint(IPAddress.Parse(ipAdress), port));
+            client.SendMessage(new MessageRegistration() { Name = playerName });
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => {
+                        if (animatedPlayers.ContainsKey(playerID))
+                            animatedPlayers[playerID].UpdatePlayer(playerToDraw, Environment.TickCount);
+                    };
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => {
+                    if (playerID == gameLogic.ThisPlayerID)
+                        firstPerson.UpdatePlayer(playerToDraw, Environment.TickCount);
+                };
+            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
+                => {
+                    if (playerID == gameLogic.ThisPlayerID)
+                        updateStatusView();
+                };
+            gameLogic.EventDeletePlayer += (int playerID)
+                => {
+                    if (animatedPlayers.ContainsKey(playerID))
+                        animatedPlayers.Remove(playerID);
+                };
+
+            Thread threadGameLoop = new Thread(gameLoop);
+            threadGameLoop.Priority = ThreadPriority.Highest;
+            threadGameLoop.Start();
+
+        }
+
+        void loadSprites()
+        {
+            int timeForFrame = 50;
+
+            #region Animation Player Move
+            animationPlayerMoveFront = new Animation(timeForFrame);
             animationPlayerMoveFront.Frames = new Bitmap[] { new Bitmap("textures/direction_front/SPR_BJ_M1.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_M2.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_M3.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_M4.BMP")};
 
+            animationPlayerMoveLeft = new Animation(timeForFrame);
+            animationPlayerMoveLeft.Frames = new Bitmap[] { new Bitmap("textures/direction_left/SPR_BJ_M1.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_M2.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_M3.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_M4.BMP")};
+
+            animationPlayerMoveRight = new Animation(timeForFrame);
+            animationPlayerMoveRight.Frames = new Bitmap[] { new Bitmap("textures/direction_right/SPR_BJ_M1.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_M2.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_M3.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_M4.BMP")};
+
+            animationPlayerMoveBack = new Animation(timeForFrame);
+            animationPlayerMoveBack.Frames = new Bitmap[] {new Bitmap("textures/direction_back/SPR_BJ_M1.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M2.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M3.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_M4.BMP")};
+
+            #endregion
+
+            #region Animation Player None
             animationPlayerNoneFront = new Animation(1000);
             animationPlayerNoneFront.Frames = new Bitmap[] {
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNREADY.BMP")
@@ -86,66 +159,107 @@ namespace ClientGame
                 new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNREADY.BMP")
             };
 
-            animationPlayerMoveBack = new Animation(500);
-            animationPlayerMoveBack.Frames = new Bitmap[] {new Bitmap("textures/direction_back/SPR_BJ_M1.BMP"),
-                new Bitmap("textures/direction_back/SPR_BJ_M2.BMP"),
-                new Bitmap("textures/direction_back/SPR_BJ_M3.BMP"),
-                new Bitmap("textures/direction_back/SPR_BJ_M4.BMP")};
+            animationPlayerNoneLeft = new Animation(1000);
+            animationPlayerNoneLeft.Frames = new Bitmap[] { 
+                new Bitmap("textures/direction_left/SPR_BJ_MACHINEGUNREADY.BMP") 
+            };
 
-            animationShootFront = new Animation(500);
+
+            animationPlayerNoneRight = new Animation(1000);
+            animationPlayerNoneRight.Frames = new Bitmap[] {
+                new Bitmap("textures/direction_right/SPR_BJ_MACHINEGUNREADY.BMP") 
+            };
+            #endregion
+
+            #region Animation PLayer Shoot
+            animationShootFront = new Animation(timeForFrame);
             animationShootFront.Frames = new Bitmap[] { new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK1.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK2.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK3.BMP"),
                 new Bitmap("textures/direction_front/SPR_BJ_MACHINEGUNATK4.BMP")};
 
-            textureInterface = new Bitmap("textures/first_person/SPR_MACHINEGUNREADY.BMP");
+            animationShootBack = new Animation(timeForFrame);
+            animationShootBack.Frames = new Bitmap[] { new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNATK1.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNATK2.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNATK3.BMP"),
+                new Bitmap("textures/direction_back/SPR_BJ_MACHINEGUNATK4.BMP")};
+
+            animationShootLeft = new Animation(timeForFrame);
+            animationShootLeft.Frames = new Bitmap[] { new Bitmap("textures/direction_left/SPR_BJ_MACHINEGUNATK1.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_MACHINEGUNATK2.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_MACHINEGUNATK3.BMP"),
+                new Bitmap("textures/direction_left/SPR_BJ_MACHINEGUNATK4.BMP")};
+
+            animationShootRight = new Animation(timeForFrame);
+            animationShootRight.Frames = new Bitmap[] { new Bitmap("textures/direction_right/SPR_BJ_MACHINEGUNATK1.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_MACHINEGUNATK2.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_MACHINEGUNATK3.BMP"),
+                new Bitmap("textures/direction_right/SPR_BJ_MACHINEGUNATK4.BMP")};
+
+            #endregion
 
             firstPerson.AnimationReady = new Animation(1000);
             firstPerson.AnimationReady.Frames = new Bitmap[] { new Bitmap("textures/first_person/SPR_MACHINEGUNREADY.BMP") };
 
-            firstPerson.AnimationShoot = new Animation(500);
+            firstPerson.AnimationShoot = new Animation(timeForFrame);
             firstPerson.AnimationShoot.Frames = new Bitmap[] { new Bitmap("textures/first_person/SPR_MACHINEGUNATK1.BMP"),
                 new Bitmap("textures/first_person/SPR_MACHINEGUNATK2.BMP"),
                 new Bitmap("textures/first_person/SPR_MACHINEGUNATK3.BMP"),
                 new Bitmap("textures/first_person/SPR_MACHINEGUNATK4.BMP")};
 
+            animationDie = new Animation(timeForFrame);
+            animationDie.Frames = new Bitmap[] { new Bitmap("textures/SPR_BJ_DEAD.BMP") };
+        }
 
-            soundPlayer.LoadSound("shoot", "audio/gun-gunshot-01.wav");
+        AnimatedPlayer getNewAnimatedPlayer()
+        {
+            AnimatedPlayer newPlayer = new AnimatedPlayer(PhysicsUpdateInterval);
 
-            client = new GameClient();
-            string map = "";
-            map += "########";
-            map += "#......#";
-            map += "#....#.#";
-            map += "########";
-            gameLogic = new ClientGameLogic();
-            gameLogic.Map = new TileMap(8, 4, map);
-            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
-                => { if (animatedPlayers.ContainsKey(playerID))
-                        animatedPlayers[playerID].UpdatePlayer(playerToDraw, Environment.TickCount);
-                };
-            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
-                => { if (playerID == gameLogic.ThisPlayerID)
-                        firstPerson.UpdatePlayer(playerToDraw, Environment.TickCount);
-                };
-            gameLogic.EventChangeState += (Player playerToDraw, int playerID)
-                => { if (playerID == gameLogic.ThisPlayerID)
-                        updateStatusView();
-                  };
-            gameLogic.EventDeletePlayer += (int playerID)
-                => { if (animatedPlayers.ContainsKey(playerID))
-                        animatedPlayers.Remove(playerID);
-                };
-            render3D = new Render3D(gameLogic.Map, wallTextures);
-            client.ReceiveMessageHandler += HandleMessage;
-            isConnected = client.ConnectToServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8005));
-            client.SendMessage(new MessageRegistration() { Name = playerName });
-            messageToSend = new MessagePlayerAction();
+            #region walking animation
+            newPlayer.AnimationWalkFront = new Animation(animationPlayerMoveFront.TimeForFrame);
+            newPlayer.AnimationWalkFront.Frames = animationPlayerMoveFront.Frames;
 
-            Thread threadGameLoop = new Thread(gameLoop);
-            threadGameLoop.Priority = ThreadPriority.Highest;
-            threadGameLoop.Start();
 
+            newPlayer.AnimationWalkBack = new Animation(animationPlayerMoveBack.TimeForFrame);
+            newPlayer.AnimationWalkBack.Frames = animationPlayerMoveBack.Frames;
+
+            newPlayer.AnimationWalkLeft = new Animation(animationPlayerMoveLeft.TimeForFrame);
+            newPlayer.AnimationWalkLeft.Frames = animationPlayerMoveLeft.Frames;
+
+            newPlayer.AnimationWalkRight = new Animation(animationPlayerMoveRight.TimeForFrame);
+            newPlayer.AnimationWalkRight.Frames = animationPlayerMoveRight.Frames;
+
+            #endregion
+            #region animation none
+            newPlayer.AnimationNoneFront = new Animation(animationPlayerNoneFront.TimeForFrame);
+            newPlayer.AnimationNoneFront.Frames = animationPlayerNoneFront.Frames;
+
+            newPlayer.AnimationNoneBack = new Animation(animationPlayerNoneBack.TimeForFrame);
+            newPlayer.AnimationNoneBack.Frames = animationPlayerNoneBack.Frames;
+
+            newPlayer.AnimationNoneLeft = new Animation(animationPlayerNoneLeft.TimeForFrame);
+            newPlayer.AnimationNoneLeft.Frames = animationPlayerNoneLeft.Frames;
+
+            newPlayer.AnimationNoneRight = new Animation(animationPlayerNoneRight.TimeForFrame);
+            newPlayer.AnimationNoneRight.Frames = animationPlayerNoneRight.Frames;
+            #endregion
+            #region animation shoot
+            newPlayer.AnimationAttackFront = new Animation(animationShootFront.TimeForFrame);
+            newPlayer.AnimationAttackFront.Frames = animationShootFront.Frames;
+
+            newPlayer.AnimationAttackBack = new Animation(animationShootBack.TimeForFrame);
+            newPlayer.AnimationAttackBack.Frames = animationShootBack.Frames;
+
+            newPlayer.AnimationAttackLeft = new Animation(animationShootLeft.TimeForFrame);
+            newPlayer.AnimationAttackLeft.Frames = animationShootLeft.Frames;
+
+            newPlayer.AnimationAttackRight = new Animation(animationShootRight.TimeForFrame);
+            newPlayer.AnimationAttackRight.Frames = animationShootRight.Frames;
+            #endregion
+            newPlayer.AnimationDie = new Animation(animationDie.TimeForFrame);
+            newPlayer.AnimationDie.Frames = animationDie.Frames;
+
+            return newPlayer;
         }
 
 
@@ -228,7 +342,27 @@ namespace ClientGame
                 firstPerson.UpdateAnimation(elapsedTime);
            //     updateStatusView();
                 updateView();
+                checkRespawn();
                 // Invalidate();
+            }
+        }
+
+        void checkRespawn()
+        {
+            var player = gameLogic.GetThisPlayer();
+            if (player == null)
+                return;
+            if (player.Health <= 0 && player.Lives > 0)
+            {
+                client.SendMessage(new MessageRespawnRequest());
+            }
+            if(player.Health <= 0 && player.Lives == 0)
+            {
+                client.SendMessage(new MessageDeletePlayer());
+                MessageBox.Show("YOU DIED", "GAME OVER", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                isConnected = false;
+                Action action = delegate { this.Close(); };
+                Invoke(action);
             }
         }
 
@@ -238,22 +372,8 @@ namespace ClientGame
             {
                 if (!animatedPlayers.ContainsKey(playerID) && playerID != gameLogic.ThisPlayerID)
                 {
-                    AnimatedPlayer newPlayer = new AnimatedPlayer(PhysicsUpdateInterval);
 
-                    newPlayer.AnimationWalkFront = new Animation(animationPlayerMoveFront.TimeForFrame);
-                    newPlayer.AnimationWalkFront.Frames = animationPlayerMoveFront.Frames;
-
-                    newPlayer.AnimationNoneFront = new Animation(animationPlayerNoneFront.TimeForFrame);
-                    newPlayer.AnimationNoneFront.Frames = animationPlayerNoneFront.Frames;
-
-                    newPlayer.AnimationNoneBack = new Animation(animationPlayerNoneBack.TimeForFrame);
-                    newPlayer.AnimationNoneBack.Frames = animationPlayerNoneBack.Frames;
-
-                    newPlayer.AnimationWalkBack = new Animation(animationPlayerMoveBack.TimeForFrame);
-                    newPlayer.AnimationWalkBack.Frames = animationPlayerMoveBack.Frames;
-
-                    newPlayer.AnimationAttackFront = new Animation(animationShootFront.TimeForFrame);
-                    newPlayer.AnimationAttackFront.Frames = animationShootFront.Frames;
+                    AnimatedPlayer newPlayer = getNewAnimatedPlayer();
                     // newPlayer.AnimationDie = 
                     var logicPlayer = gameLogic.Players[playerID];
                     newPlayer.UpdatePlayer(logicPlayer, Environment.TickCount);
@@ -336,69 +456,26 @@ namespace ClientGame
 
         void DrawChat(Graphics g)
         {
+            const int MaxShowMessagesAmount = 10;
+            const int MessageHeight = 20;
+            const int MaxMessagesHeight = MaxShowMessagesAmount * MessageHeight;
+            int messagesAmount = gameLogic.chatMessages.Count;
             Font drawFont = new Font("Arial", 12);
-            for (int i = 0; i < gameLogic.chatMessages.Count; i++)
+            for (int i = 0; i < messagesAmount && i < MaxShowMessagesAmount; i++)
             {
-                g.DrawString(gameLogic.chatMessages[i].Content, drawFont, new SolidBrush(Color.Green), 0, i * 20);
+                g.DrawString(gameLogic.chatMessages[messagesAmount- i - 1].Content, 
+                    drawFont, new SolidBrush(Color.Green), 0, MaxMessagesHeight - i * MessageHeight);
             }
             g.DrawString(this.fps.ToString(), drawFont, new SolidBrush(Color.Red), 200, 0);
-        }
-
-        void drawRays(Player player, Graphics g)
-        {
-            TileMap map = gameLogic.Map;
-            double ViewAngle = Math.PI / 2;
-            int VerticalSegmentsAmount = 50;
-            double checkStep = 0.1;
-            for (int x = 0; x < VerticalSegmentsAmount; x++)
-            {
-                //float fRayAngle = (player.fAngle - fViewAngle / 2.0f) + ((float)x / ScreenWidth) * fViewAngle;
-                double rayAngle = player.ViewAngle - ViewAngle / 2 + ((double)x / VerticalSegmentsAmount) * ViewAngle;
-
-                double wallDistance = 0;
-                bool isWall = false;
-                int testX, testY;
-                while (!isWall)
-                {
-                    wallDistance += checkStep;
-                    testX = (int)(player.Position.X + Math.Cos(rayAngle) * wallDistance);
-                    testY = (int)(player.Position.Y + Math.Sin(rayAngle) * wallDistance);
-                    if (testX >= map.Width || testX < 0 || testY >= map.Height || testY < 0)
-                    {
-                        isWall = true;
-                    }
-                    else
-                    {
-                        isWall = map.IsSolid(testX, testY);
-                    }
-                }
-                Vector2D drawPosition = new Vector2D();
-                drawPosition.X = player.Position.X * TileSize;
-                drawPosition.Y = player.Position.Y * TileSize;
-                Vector2D drawEndPosition = new Vector2D(drawPosition);
-                drawEndPosition.X += wallDistance * Math.Cos(rayAngle) * TileSize;
-                drawEndPosition.Y += wallDistance * Math.Sin(rayAngle) * TileSize;
-                g.DrawLine(new Pen(Color.Red), (int)drawPosition.X, (int)drawPosition.Y,
-                    (int)drawEndPosition.X, (int)drawEndPosition.Y);
-            }
         }
 
         void updateView()
         {
             Graphics g = this.CreateGraphics();
-            g.FillRectangle(new SolidBrush(Color.Blue), 0, 0, 100, 100);
-            DrawMap(g, gameLogic.Map);
-            List<Player> savePlayersInfo = new List<Player>(gameLogic.Players.Values.AsEnumerable());
-            foreach (var playerInfo in savePlayersInfo)
-            {
-                if (playerInfo.PlayerState != PlayerState.Killed)
-                    DrawPlayer(g, playerInfo);
-            }
-            DrawBullets(g);
+            g.FillRectangle(new SolidBrush(Color.Blue), 0, 0, 500, 500);
             DrawChat(g);
             if (gameLogic.GetThisPlayer() == null)
                 return;
-            //   drawRays(gameLogic.GetThisPlayer(), g);
             Bitmap frame = getFrame(ScreenHeight, ScreenWidth);
             if (frame != null)
             {
@@ -461,7 +538,7 @@ namespace ClientGame
                 if (animatedPlayer.PlayerID != gameLogic.ThisPlayerID)
                 {
                     frame = render3D.DrawGameObject(gameLogic.Players[animatedPlayer.
-                        PlayerID], gameLogic.GetThisPlayer(), frame, animationTexture, true);
+                        PlayerID], gameLogic.GetThisPlayer(), frame, animationTexture);
                 }
             }
             Bitmap textureInterface = firstPerson.GetTexture();

@@ -41,7 +41,6 @@ namespace ClientGame
             messageHandlers.Add(MessageType.DeletePlayer, handleMessageDelete);
             messageHandlers.Add(MessageType.PersonalAddPlayer, handleMessagePersonalAdd);
             ThisPlayerID = -1;
-        //    messageHandlers.Add()
 
             chatMessages = new List<MessageChat>();
 
@@ -69,12 +68,10 @@ namespace ClientGame
             if (UnacknowledgedInputs.Count == 0)
                 return;
             MessagePlayerAction messageAction = LastMessage;
-            if (!Players.ContainsKey(ThisPlayerID))
-                return;
-            applyInput(Players[ThisPlayerID], messageAction.Action);
             var player = GetThisPlayer();
             if (player == null)
                 return;
+            applyInput(player, messageAction.Action);
             updatePhysicsPlayer(player, time);
             player.PlayerState = player.PlayerState & (PlayerState.Killed | PlayerState.Shoot);
         }
@@ -141,7 +138,7 @@ namespace ClientGame
                 }
                 if(EventChangeState.GetInvocationList().Count() > 0)
                 {
-                    if(newPlayer.PlayerState != PlayerState.None)
+                    if(newPlayer.PlayerState != PlayerState.None) 
                         EventChangeState(newPlayer, message.PlayerID);
                 }
             }

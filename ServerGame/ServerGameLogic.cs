@@ -29,6 +29,8 @@ namespace ServerGame
             messageHandlers.Add(MessageType.PlayerAction, handleMessageAction);
             messageHandlers.Add(MessageType.AddPlayer, handleMessageAdd);
             messageHandlers.Add(MessageType.DeletePlayer, handleMessageDelete);
+            messageHandlers.Add(MessageType.RespawnRequest, handleMessageRespawn);
+            messageHandlers.Add(MessageType.Regitsration, handleMessageRegistration);
 
             EventPlayerShooted += proceedPlayerShooted;
         }
@@ -37,9 +39,12 @@ namespace ServerGame
         {
             foreach(var player in Players.Values.ToArray())
             {
-                updatePhysicsPlayer(player, time);
-                if ((player.PlayerState & PlayerState.Shoot) != 0)
-                    Bullets.Add(player.Shoot(Environment.TickCount));
+                if ((player.PlayerState & PlayerState.Killed) == 0)
+                {
+                    updatePhysicsPlayer(player, time);
+                    if ((player.PlayerState & PlayerState.Shoot) != 0)
+                        Bullets.Add(player.Shoot(Environment.TickCount));
+                }
             }
         }
 
@@ -85,35 +90,6 @@ namespace ServerGame
             Players.Add(playerID, player);
         }
 
-        void handleMove(MessagePlayerAction message)
-        {
-            if(Players.ContainsKey(message.PlayerID))
-            {
-                Players[message.PlayerID].PlayerState |= (message.Action == 
-                    PlayerActionType.MoveFront) ? PlayerState.MoveFront : PlayerState.MoveBack;
-            }
-        }
-
-        void handleRotate(MessagePlayerAction message)
-        {
-            if (!Players.ContainsKey(message.PlayerID))
-                return;
-            Players[message.PlayerID].PlayerState |= ((message.Action &
-                PlayerActionType.RotateLeft) != 0) ? PlayerState.RotateLeft : PlayerState.RotateRight;
-        }
-
-        void handleShoot(MessagePlayerAction message)
-        {
-             if (!Players.ContainsKey(message.PlayerID))
-                return;
-            var bullet = Players[message.PlayerID].Shoot(Environment.TickCount);
-            if (bullet != null)
-            {
-                Players[message.PlayerID].PlayerState |= PlayerState.Shoot;
-                Bullets.Add(bullet);
-            }
-        }
-
         void handleMessageAction(GameMessage message)
         {
             
@@ -126,13 +102,33 @@ namespace ServerGame
                 applyInput(Players[message.PlayerID], messageAction.Action);
         }
 
-        void handleMessageAdd(GameMessage message)
+        void handleMessageRegistration(GameMessage message)
         {
+            if (message.MessageType != MessageType.Regitsration)
+                return;
+            if (!PlayersNames.ContainsKey(message.PlayerID))
+            {
+                PlayersNames.Add(message.PlayerID, ((MessageRegistration)message).Name);
+                Players[message.PlayerID].Name = ((MessageRegistration)message).Name;
+            }
+            MessageRegistration messageRegistration = message as MessageRegistration;
             ChatMessages.Enqueue(new MessageChat()
             {
                 PlayerID = ServerID,
                 Content =
-                message.PlayerID.ToString() + " присоединился к игре"
+                messageRegistration.Name + " присоединился к игре"
+            });
+        }
+
+        void handleMessageAdd(GameMessage message)
+        {
+            string name = PlayersNames.ContainsKey(message.PlayerID) 
+                ? PlayersNames[message.PlayerID] : message.PlayerID.ToString();
+            ChatMessages.Enqueue(new MessageChat()
+            {
+                PlayerID = ServerID,
+                Content =
+                name + " присоединился к игре"
             });
         }
 
@@ -140,12 +136,40 @@ namespace ServerGame
         {
             if (ChatMessages.Count > 1200)
                 return;
+            string name = PlayersNames.ContainsKey(message.PlayerID)
+               ? PlayersNames[message.PlayerID] : message.PlayerID.ToString();
             ChatMessages.Enqueue(new MessageChat()
             {
                 PlayerID = ServerID,
-                Content = message.PlayerID.ToString() + " покинул игру"
-            }); 
+                Content = name + " покинул игру"
+            }) ; 
             Players.Remove(message.PlayerID);
+        }
+
+        Vector2D getSpawnPoint()
+        {
+            Random random = new Random(Environment.TickCount);
+            int pointNumber = random.Next(0, Map.SpawnPoints.Length - 1);
+            Vector2D result = Map.SpawnPoints[pointNumber];
+            return result;
+        }
+
+        void handleMessageRespawn(GameMessage message)
+        {
+            if (message.MessageType != MessageType.RespawnRequest)
+                return;
+            var player = Players[message.PlayerID];
+            if((player.PlayerState & PlayerState.Killed) != 0 && player.Lives > 0)
+            {
+                player.Lives--;
+                player.Position = getSpawnPoint();
+                player.PlayerState = PlayerState.None;
+                player.Health = 100;
+                ChatMessages.Enqueue(new MessageChat()
+                {
+                    Content = PlayersNames[player.PlayerID] + " возродился"
+                });
+            }
         }
 
 

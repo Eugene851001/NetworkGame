@@ -20,7 +20,7 @@ namespace ClientGame
         {
             framePointer = 0;
             accumulatedTime = 0;
-            TimeForFrame = 0;
+            TimeForFrame = timeForFrame;
         }
         
         public void UpdateAnimation(int elapsedTime)

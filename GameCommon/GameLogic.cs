@@ -17,7 +17,7 @@ namespace GameCommon
         public double CountDistance(GameObject firstObject, GameObject secondObject)
         {
             return Math.Sqrt(Math.Pow(firstObject.Position.X - secondObject.Position.X, 2)
-                + Math.Pow(secondObject.Position.Y - secondObject.Position.Y, 2));
+                + Math.Pow(firstObject.Position.Y - secondObject.Position.Y, 2));
         }
 
         protected bool isCollision(GameObject firstObject, GameObject secondObject)
@@ -39,6 +39,16 @@ namespace GameCommon
             return false;//result;
         }
 
+        protected bool isBackWallCollision(MovableGameObject gameObject, int time)
+        {
+            Vector2D newPosition = new Vector2D();
+            newPosition.X = gameObject.Position.X - gameObject.Direction.X * gameObject.Speed * time;
+            newPosition.Y = gameObject.Position.Y - gameObject.Direction.Y * gameObject.Speed * time;
+            newPosition.X -= gameObject.Direction.X * gameObject.Size / 2;
+            newPosition.Y -= gameObject.Direction.Y * gameObject.Size / 2;
+            return Map.IsSolid((int)newPosition.X, (int)newPosition.Y);
+        }
+
         protected bool isWallCollision(MovableGameObject gameObject, int time)
         {
             Vector2D newPosition = new Vector2D();
@@ -47,10 +57,6 @@ namespace GameCommon
             newPosition.X += gameObject.Direction.X * gameObject.Size / 2;
             newPosition.Y += gameObject.Direction.Y * gameObject.Size / 2;
             return Map.IsSolid((int)newPosition.X, (int)newPosition.Y);
-            /*return Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y + gameObject.Size)) 
-                || Map.IsSolid((int)(newPosition.X + gameObject.Size), (int)(newPosition.Y - gameObject.Size)) 
-                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y + gameObject.Size))
-                || Map.IsSolid((int)(newPosition.X - gameObject.Size), (int)(newPosition.Y - gameObject.Size))*/;
         }
 
         protected virtual void updatePlayers(int time)
@@ -87,13 +93,8 @@ namespace GameCommon
                 player.MoveFront(time);
             }
             if ((player.PlayerState & PlayerState.MoveBack) != 0)
-            {
-                var testPlayer = new Player(player.PlayerID)
-                {
-                    Position = player.Position,
-                    Direction = new Vector2D(-player.Direction.X, -player.Direction.Y)
-                };
-                if(!isWallCollision(testPlayer, time) && !isPlayersCollision(testPlayer, time))
+            { 
+                if(!isBackWallCollision(player, time) && !isPlayersCollision(player, time))
                     player.MoveBack(time);
             }
             return player;
@@ -103,7 +104,6 @@ namespace GameCommon
         {
             for (int i = 0; i < Bullets.Count; i++)
             {
-             //   time = Environment.TickCount -  Bullets[i].LastUpdateTime;
                 if(isWallCollision(Bullets[i], time))
                 { 
                     Bullets[i].IsDestroy = true;

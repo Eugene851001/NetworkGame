@@ -14,10 +14,8 @@ using SerializeHandler;
 namespace ClientGame
 {
 
-    public enum GameState { Run, Pause, Exit };
     public class GameClient
     { 
-        const string BroadcastIP = "192.168.48.255";
         const int ServerPort = 8005;
         Socket socketServerHandler;
         Socket socketUdpHandler;
@@ -60,9 +58,12 @@ namespace ClientGame
         public void UdpBroadcastRequest()
         {
             MessageSearchRequest message = new MessageSearchRequest();
+            IPAddress currentIPAddress = NetworkInfo.GetCurrentIP();
             message.Port = ((IPEndPoint)socketUdpHandler.LocalEndPoint).Port;
-            message.IPAdress = "127.0.0.1";
-            IPEndPoint IPendPoint = new IPEndPoint(IPAddress.Parse(BroadcastIP), ServerPort);
+            message.IPAdress = currentIPAddress.ToString();
+            IPAddress mask = NetworkInfo.GetIPv4Mask(currentIPAddress);
+            IPAddress strongBroadcast = NetworkInfo.GetBroadcastAddress(currentIPAddress, mask);
+            IPEndPoint IPendPoint = new IPEndPoint(strongBroadcast, ServerPort);
             Socket sendRequest = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             sendRequest.SendTo(messageSerializer.Serialize(message, message.GetType()), IPendPoint);
             Thread threadReceiveUdp = new Thread(ReceiveMessagesUdp);
